@@ -1,0 +1,7 @@
+#dependencias
+fpdf==1.7.2
+pandas==2.2.1
+python-dateutil==2.9.0.post0
+pytz==2024.1
+numpy==1.26.4
+setuptools==69.2.0
