@@ -5,6 +5,7 @@ from src.config import PDF_DIR, ESTADO_DIR, SMTP_CONFIG, ARCHIVO_DIRECCIONES, LO
 from src.conversor import ConversorPDF
 from src.enviar_correo import EnviadorCorreo
 
+# Configuración de logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -15,9 +16,8 @@ def procesar_archivo(path, nit, tamano_letra):
     try:
         logging.info(f"Iniciando procesamiento para NIT: {nit}")
 
-        # Convertir la ruta proporcionada a una ruta relativa al directorio base
-        path = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', path))
-        logging.info(f"Ruta relativa resuelta: {path}")
+        # Usar la ruta tal como está (ya está normalizada en config.py)
+        logging.info(f"Usando ruta: {path}")
 
         # Crear carpetas si no existen
         os.makedirs(PDF_DIR, exist_ok=True)
@@ -60,6 +60,7 @@ def main():
             logging.error("Uso: python main.py <ruta> <nit> <tamano_letra>")
             sys.exit(1)
         
+        # Estos valores se usan en config.py para configurar las rutas
         path = sys.argv[1]
         nit = sys.argv[2]
         tamano_letra = sys.argv[3]
@@ -68,7 +69,7 @@ def main():
         logging.info(f"NIT proporcionado: {nit}")
         logging.info(f"Tamaño de letra: {tamano_letra}")
 
-        # Procesar archivo
+        # Procesar archivo con la ruta proporcionada
         resultado = procesar_archivo(path, nit, tamano_letra)
         
         sys.exit(0 if resultado else 1)
