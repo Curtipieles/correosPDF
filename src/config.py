@@ -35,7 +35,7 @@ SMTP_CONFIG = {
 FONTS_DIR = os.path.join(BASE_DIR, 'fonts')
 
 DEFAULT_FONT = {
-    'family': 'Tipografia',
+    'family': 'JetBrainsMono',
     'style': '',
     'file': 'JetBrainsMono-SemiBoldItalic.ttf'
 }

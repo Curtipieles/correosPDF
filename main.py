@@ -24,7 +24,7 @@ def procesar_archivo(path, nit, tamano_letra):
         os.makedirs(ESTADO_DIR, exist_ok=True)
 
         # Convertir a PDF
-        pdf_path = ConversorPDF.convertir_a_pdf(path, nit, LOGO_EMPRESA, tamano_letra, PDF_DIR)
+        pdf_path = ConversorPDF.convertir_a_pdf(path, nit, tamano_letra, PDF_DIR)
         
         if not pdf_path:
             logging.error(f"No se pudo generar el PDF para NIT: {nit}")
@@ -56,14 +56,16 @@ def procesar_archivo(path, nit, tamano_letra):
 def main():
     try:
         # Validar argumentos
-        if len(sys.argv) < 4:
-            logging.error("Uso: python main.py <ruta> <nit> <tamano_letra>")
+        if len(sys.argv) < 4 and len(sys.argv) > 4:
+            logging.error("Uso: python main.py <ruta> <nit> <tamano_letra> <correo_origen")
             sys.exit(1)
         
         # Estos valores se usan en config.py para configurar las rutas
         path = sys.argv[1]
         nit = sys.argv[2]
         tamano_letra = sys.argv[3]
+        correo_origen = sys.argv[4]
+        print("CORREO O: " + correo_origen)
 
         logging.info(f"Ruta proporcionada: {path}")
         logging.info(f"NIT proporcionado: {nit}")
