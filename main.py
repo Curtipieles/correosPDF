@@ -56,7 +56,7 @@ def procesar_archivo(path, nit, tamano_letra):
 def main():
     try:
         # Validar argumentos
-        if len(sys.argv) < 4 and len(sys.argv) > 4:
+        if len(sys.argv) < 5 and len(sys.argv) > 5:
             logging.error("Uso: python main.py <ruta> <nit> <tamano_letra> <correo_origen")
             sys.exit(1)
         
@@ -65,7 +65,7 @@ def main():
         nit = sys.argv[2]
         tamano_letra = sys.argv[3]
         correo_origen = sys.argv[4]
-        print("CORREO O: " + correo_origen)
+        app_pw = sys.argv[5]
 
         logging.info(f"Ruta proporcionada: {path}")
         logging.info(f"NIT proporcionado: {nit}")
