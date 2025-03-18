@@ -45,7 +45,7 @@ class EnviadorCorreo:
 
             with smtplib.SMTP(config_correo['server'], config_correo['port']) as server:
                 server.starttls()
-                server.login(config_correo['usuario'], config_correo['clave'])
+                server.login(config_correo['usuario'], config_correo['app_pw'])
                 server.send_message(msg)
                 logging.info(f"Correo enviado a {correo} para NIT {nit}")
                 return True
