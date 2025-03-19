@@ -17,11 +17,6 @@ def determinar_servidor_smtp(correo):
     servidores = {
         # Gmail
         'gmail.com': {'server': 'smtp.gmail.com', 'port': 587},
-        # Microsoft (Hotmail, Outlook, Live)
-        'hotmail.com': {'server': 'smtp-mail.outlook.com', 'port': 587},
-        'outlook.com': {'server': 'smtp-mail.outlook.com', 'port': 587},
-        'live.com': {'server': 'smtp-mail.outlook.com', 'port': 587},
-        'msn.com': {'server': 'smtp-mail.outlook.com', 'port': 587},
         # Yahoo
         'yahoo.com': {'server': 'smtp.mail.yahoo.com', 'port': 587},
         'yahoo.es': {'server': 'smtp.mail.yahoo.com', 'port': 587},

@@ -5,6 +5,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 
+import requests
+
 class EnviadorCorreo:
     @staticmethod
     def obtener_correo_por_nit(nit, archivo_direcciones):
@@ -23,7 +25,7 @@ class EnviadorCorreo:
         return None
 
     @staticmethod
-    def enviar_correo(nit, pdf_path, config_correo, archivo_direcciones):
+    def enviar_correo_gmail(nit, pdf_path, config_correo, archivo_direcciones):
         try:
             correo = EnviadorCorreo.obtener_correo_por_nit(nit, archivo_direcciones)
             print(correo)
@@ -56,3 +58,45 @@ class EnviadorCorreo:
             logging.error(f"Error inesperado enviando correo: {e}")
         
         return False
+
+    @staticmethod
+    def enviar_correo_make(nit, pdf_path, correo_origen, archivo_direcciones):
+        try:
+            correo = EnviadorCorreo.obtener_correo_por_nit(nit, archivo_direcciones)
+            if not correo:
+                return False
+            
+            # Preparar datos para Make
+            make_config = {
+                "from": correo_origen,
+                "to": correo,
+                "subject": "Estado de Cuenta Curtipieles",
+                "body": "Adjunto encontrará su estado de cuenta.",
+                "attachment_path": pdf_path,
+            }
+            
+            # Guardar configuración para Make
+            import json
+            make_config_path = os.path.join(os.path.dirname(pdf_path), f'{nit}_make_config.json')
+            with open(make_config_path, 'w') as f:
+                json.dump(make_config, f)
+            
+            webhook_url = "https://hook.us2.make.com/r42elu8lgoha8u2v596he5qkgsgk47kq"
+            
+            # Enviar la solicitud a Make
+            response = requests.post(
+                webhook_url,
+                headers={"Content-Type": "application/json"},
+                data=json.dumps(make_config)
+            )
+            
+            if response.status_code == 200:
+                logging.info(f"Datos enviados exitosamente a Make para NIT: {nit}")
+                return True
+            else:
+                logging.error(f"Error al enviar datos a Make: {response.status_code} - {response.text}")
+                return False
+            
+        except Exception as e:
+            logging.error(f"Error preparando envío por Make: {e}")
+            return False
