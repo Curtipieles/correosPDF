@@ -17,11 +17,6 @@ def determinar_servidor_smtp(correo):
     servidores = {
         # Gmail
         'gmail.com': {'server': 'smtp.gmail.com', 'port': 587},
-        # Microsoft (Hotmail, Outlook, Live)
-        'hotmail.com': {'server': 'smtp-mail.outlook.com', 'port': 587},
-        'outlook.com': {'server': 'smtp-mail.outlook.com', 'port': 587},
-        'live.com': {'server': 'smtp-mail.outlook.com', 'port': 587},
-        'msn.com': {'server': 'smtp-mail.outlook.com', 'port': 587},
         # Yahoo
         'yahoo.com': {'server': 'smtp.mail.yahoo.com', 'port': 587},
         'yahoo.es': {'server': 'smtp.mail.yahoo.com', 'port': 587},
@@ -55,14 +50,13 @@ def determinar_servidor_smtp(correo):
     logging.warning(f"Dominio de correo no reconocido: {dominio}. Usando configuración predeterminada.")
     return {'server': 'smtp.gmail.com', 'port': 587}
 
-def obtener_config_smtp(correo_usuario, clave):
+def obtener_config_smtp(correo_usuario, app_pw):
     config_servidor = determinar_servidor_smtp(correo_usuario)
-    
     return {
         'server': config_servidor['server'],
         'port': config_servidor['port'],
         'usuario': correo_usuario,
-        'clave': clave
+        'app_pw': app_pw
     }
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -78,9 +72,6 @@ else:
 ENTRADA_DIR = os.path.join(DATA_DIR, 'entrada')
 PDF_DIR = os.path.join(DATA_DIR, 'PDF')
 ESTADO_DIR = os.path.join(DATA_DIR, 'estado')
-
-# Configuraciones de correo
-SMTP_CONFIG = obtener_config_smtp(sys.argv[4], sys.argv[5])
 
 FONTS_DIR = os.path.join(BASE_DIR, 'fonts')
 

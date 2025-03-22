@@ -8,7 +8,6 @@ class ConversorPDF:
     def validar_archivo(ruta_usuario, nit):
         # Convertir la ruta a relativa al directorio base
         ruta_archivo = os.path.normpath(os.path.join(ruta_usuario, 'entrada', f'{nit}.txt'))
-        logging.info(f"Validando archivo en: {ruta_archivo}")
         if not os.path.exists(ruta_archivo):
             logging.error(f"Archivo no encontrado: {ruta_archivo}")
             return False
@@ -31,9 +30,7 @@ class ConversorPDF:
             
             pdf = PDF()
             
-            # Ruta de la fuente personalizada
             source_pro_path = os.path.normpath(os.path.join(FONTS_DIR, DEFAULT_FONT['file']))
-            logging.info(f"Buscando fuente en: {source_pro_path}")
 
             if not os.path.exists(source_pro_path):
                 logging.error(f"Archivo de fuente no encontrado: {source_pro_path}")
@@ -69,9 +66,7 @@ class ConversorPDF:
             nombre_pdf = f'{nit}.pdf'
             ruta_completa_pdf = os.path.normpath(os.path.join(pdf_dir, nombre_pdf))
             source_pro_path = os.path.abspath(os.path.join(FONTS_DIR, DEFAULT_FONT['file']))
-            print("Ruta ABSOLUTA de la fuente:", source_pro_path)
             pdf.output(ruta_completa_pdf)
-            print("DIED")
             logging.info(f"PDF generado: {ruta_completa_pdf}")
             return ruta_completa_pdf
 

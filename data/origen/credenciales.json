@@ -1,0 +1,7 @@
+{
+    "client_id": "tu-client-id-de-microsoft",
+    "client_secret": "tu-client-secret-de-microsoft",
+    "tenant_id": "tu-tenant-id-o-common",
+    "redirect_uri": "http://localhost:8000",
+    "scope": "https://graph.microsoft.com/mail.send offline_access"
+}
