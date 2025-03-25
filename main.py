@@ -98,9 +98,7 @@ def main(*args):
             else:
                 resultado = None         
 
-            logging.info(f"Ruta proporcionada: {path}")
-            logging.info(f"NIT proporcionado: {nit}")
-            logging.info(f"Tamaño de letra: {tamano_letra}")
+
             sys.exit(0 if resultado else 1)
 
     except Exception as e:

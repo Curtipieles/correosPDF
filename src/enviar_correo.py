@@ -66,37 +66,48 @@ class EnviadorCorreo:
             if not correo:
                 return False
             
-            # Preparar datos para Make
+            # Leer el PDF como base64
+            import base64
+            with open(pdf_path, 'rb') as pdf_file:
+                pdf_base64 = base64.b64encode(pdf_file.read()).decode('utf-8')
+
+            # Estructura que espera Make (Microsoft 365)
             make_config = {
-                "from": correo_origen,
-                "to": correo,
-                "subject": "Estado de Cuenta Curtipieles",
-                "body": "Adjunto encontrará su estado de cuenta.",
-                "attachment_path": pdf_path,
+                "toRecipients": [{"email": correo}],
+                "from": {"email": correo_origen},
+                "subject": "Estado de Cuenta Curtipíeles",
+                "body": {
+                    "content": "Adjunto encontrará su estado de cuenta.",
+                    "contentType": "text"
+                },
+                "attachments": [
+                    {
+                        "contentBytes": pdf_base64,
+                        "name": os.path.splitext(os.path.basename(pdf_path))[0]
+                    }
+                ]
             }
-            
-            # Guardar configuración para Make
-            import json
-            make_config_path = os.path.join(os.path.dirname(pdf_path), f'{nit}_make_config.json')
-            with open(make_config_path, 'w') as f:
-                json.dump(make_config, f)
-            
+
             webhook_url = "https://hook.us2.make.com/r42elu8lgoha8u2v596he5qkgsgk47kq"
-            
-            # Enviar la solicitud a Make
+
+            # Enviar la solicitud
             response = requests.post(
                 webhook_url,
                 headers={"Content-Type": "application/json"},
-                data=json.dumps(make_config)
+                json=make_config
             )
-            
+            import json
+            print("Payload enviado a Make:")
+            print(json.dumps(make_config, indent=2))
+            print(f"Respuesta: {response.status_code} - {response.text}")
+
             if response.status_code == 200:
                 logging.info(f"Datos enviados exitosamente a Make para NIT: {nit}")
                 return True
             else:
                 logging.error(f"Error al enviar datos a Make: {response.status_code} - {response.text}")
                 return False
-            
+
         except Exception as e:
             logging.error(f"Error preparando envío por Make: {e}")
             return False
