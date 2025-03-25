@@ -68,11 +68,16 @@ class EnviadorCorreo:
             
             # Preparar datos para Make
             make_config = {
-                "from": correo_origen,
-                "to": correo,
+                "from": [{"emailAddress": {"address": correo_origen}}],
+                "toRecipients": [{"emailAddress": {"address": correo}}],
                 "subject": "Estado de Cuenta Curtipieles",
                 "body": "Adjunto encontrará su estado de cuenta.",
-                "attachment_path": pdf_path,
+                "attachments": [
+                    {
+                    "filename": "estado_cuenta.pdf",
+                    "data": pdf_path
+                    }
+                ]
             }
             
             # Guardar configuración para Make
