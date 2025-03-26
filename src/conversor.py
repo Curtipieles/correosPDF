@@ -6,7 +6,6 @@ from src.config import FONTS_DIR, DEFAULT_FONT, LOGO_EMPRESA
 class ConversorPDF:
     @staticmethod
     def validar_archivo(ruta_usuario, nit):
-        # Convertir la ruta a relativa al directorio base
         ruta_archivo = os.path.normpath(os.path.join(ruta_usuario, 'entrada', f'{nit}.txt'))
         if not os.path.exists(ruta_archivo):
             logging.error(f"Archivo no encontrado: {ruta_archivo}")
