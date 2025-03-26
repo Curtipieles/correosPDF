@@ -1,11 +1,13 @@
+from collections import namedtuple
 import os
 import smtplib
 import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
-
 import requests
+
+info_correo = namedtuple('info_correo', ['asunto', 'cuerpo'])
 
 class EnviadorCorreo:
     @staticmethod
@@ -23,21 +25,41 @@ class EnviadorCorreo:
         except Exception as e:
             logging.error(f"Error buscando correo: {e}")
         return None
+    
+    @staticmethod
+    def obtener_info_correo(archivo_info_correos):
+        try:
+            with open(archivo_info_correos, 'r') as file:
+                print("ARCHIVO ABIERTO")
+                lineas = file.readlines()
+                asunto = lineas[0].strip()
+                cuerpo = ''.join(lineas[1:]).strip()
+            if asunto and cuerpo:
+                return info_correo(asunto, cuerpo)
+            logging.warning(f"Asunto: {asunto} Cuerpo: {cuerpo}")
+            return None
+        except FileNotFoundError:
+            logging.error(f"Archivo info_correo no encontrado: {archivo_info_correos}")
+        except Exception as e:
+            logging.error(f"Error buscando informacion del correo: {e}")
+        return None
 
     @staticmethod
-    def enviar_correo_gmail(nit, pdf_path, config_correo, archivo_direcciones):
+    def enviar_correo_gmail(nit, pdf_path, config_correo, archivo_direcciones, archivo_info_correos):
         try:
             correo = EnviadorCorreo.obtener_correo_por_nit(nit, archivo_direcciones)
-            print(correo)
+            info = EnviadorCorreo.obtener_info_correo(archivo_info_correos)
+            asunto, cuerpo = (info.asunto, info.cuerpo) if info else ("", "")
             if not correo:
                 return False
+
+            print(correo)
 
             msg = MIMEMultipart()
             msg['From'] = config_correo['usuario']
             msg['To'] = correo
-            msg['Subject'] = 'Estado de Cuenta Curtipieles'
-
-            body = 'Adjunto encontrará su estado de cuenta.'
+            msg['Subject'] = asunto
+            body = cuerpo
             msg.attach(MIMEText(body, 'plain'))
 
             with open(pdf_path, 'rb') as pdf_file:
@@ -56,28 +78,27 @@ class EnviadorCorreo:
             logging.error(f"Error SMTP enviando correo: {e}")
         except Exception as e:
             logging.error(f"Error inesperado enviando correo: {e}")
-        
         return False
 
     @staticmethod
-    def enviar_correo_make(nit, pdf_path, correo_origen, archivo_direcciones):
+    def enviar_correo_make(nit, pdf_path, correo_origen, archivo_direcciones, archivo_info_correos):
         try:
             correo = EnviadorCorreo.obtener_correo_por_nit(nit, archivo_direcciones)
+            info = EnviadorCorreo.obtener_info_correo(archivo_info_correos)
+            asunto, cuerpo = (info.asunto, info.cuerpo) if info else ("", "")
             if not correo:
                 return False
             
-            # Leer el PDF como base64
             import base64
             with open(pdf_path, 'rb') as pdf_file:
                 pdf_base64 = base64.b64encode(pdf_file.read()).decode('utf-8')
 
-            # Estructura que espera Make (Microsoft 365)
             make_config = {
                 "toRecipients": [{"email": correo}],
                 "from": {"email": correo_origen},
-                "subject": "Estado de Cuenta Curtipíeles",
+                "subject": asunto,
                 "body": {
-                    "content": "Adjunto encontrará su estado de cuenta.",
+                    "content": cuerpo,
                     "contentType": "text"
                 },
                 "attachments": [

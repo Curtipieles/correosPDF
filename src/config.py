@@ -43,11 +43,8 @@ def determinar_servidor_smtp(correo):
         # 'empresa1.com': {'server': 'smtp.empresa1.com', 'port': 587},
     }
     
-    # Comprobar si el dominio está en nuestra lista
     if dominio in servidores:
         return servidores[dominio]
-    
-    logging.warning(f"Dominio de correo no reconocido: {dominio}. Usando configuración predeterminada.")
     return {'server': 'smtp.gmail.com', 'port': 587}
 
 def obtener_config_smtp(correo_usuario, app_pw):
@@ -68,21 +65,26 @@ if os.path.isabs(data_path):
 else:
     DATA_DIR = os.path.normpath(os.path.join(os.getcwd(), data_path))
 
-# Directorios del proyecto
 ENTRADA_DIR = os.path.join(DATA_DIR, 'entrada')
 PDF_DIR = os.path.join(DATA_DIR, 'PDF')
 ESTADO_DIR = os.path.join(DATA_DIR, 'estado')
+ORIGEN_DIR = os.path.join(DATA_DIR, 'origen')
 
 FONTS_DIR = os.path.join(BASE_DIR, 'fonts')
-
 DEFAULT_FONT = {
     'family': 'JetBrainsMono',
     'style': '',
     'file': 'JetBrainsMono-SemiBoldItalic.ttf'
 }
-
 FONT_FILE_PATH = os.path.join(FONTS_DIR, DEFAULT_FONT['file'])
 
 # Rutas de archivos importantes
+ARCHIVO_INFO_CORREOS = os.path.join(ORIGEN_DIR, 'info_correo.txt')
 ARCHIVO_DIRECCIONES = os.path.join(ENTRADA_DIR, 'direcciones.txt')
 LOGO_EMPRESA = os.path.join(BASE_DIR, 'logo_curti.JPG')
+
+print("ENTRADA_DIR:", repr(ENTRADA_DIR))
+print("PDF_DIR:", repr(PDF_DIR))
+print("ESTADO_DIR:", repr(ESTADO_DIR))
+print("ORIGEN_DIR:", repr(ORIGEN_DIR))
+print("ARCHIVO_INFO_CORREOS:", repr(ARCHIVO_INFO_CORREOS))
