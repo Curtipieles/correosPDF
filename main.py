@@ -28,13 +28,16 @@ def procesamiento_gmail(path, nit, tamano_letra, correo_origen, app_pw):
 
         logging.info(f"PDF generado exitosamente: {pdf_path}")
 
-        if not os.path.exists(cfg.ARCHIVO_DIRECCIONES):
-            logging.error(f"No se encontró el archivo de direcciones: {cfg.ARCHIVO_DIRECCIONES}")
+        if not os.path.exists(cfg.ARCHIVO_DIRECCIONES) and os.path.exists(cfg.ARCHIVO_INFO_CORREOS):
+            logging.error(f"Archivo direcciones.txt o info_correo.txt no fue encontrado")
             return False
 
         smtp_config = cfg.obtener_config_smtp(correo_origen, app_pw)
-        enviado = EnviadorCorreo.enviar_correo_gmail(nit, pdf_path, smtp_config, cfg.ARCHIVO_DIRECCIONES)
-        
+        enviado = EnviadorCorreo.enviar_correo_gmail(nit, 
+                                                     pdf_path, 
+                                                     smtp_config, 
+                                                     cfg.ARCHIVO_DIRECCIONES, 
+                                                     cfg.ARCHIVO_INFO_CORREOS)
         # Registrar estado de envío
         estado = 'ENVIADO' if enviado else 'ERROR'
         estado_path = os.path.join(cfg.ESTADO_DIR, f'{nit}_estado.txt')
@@ -61,12 +64,15 @@ def procesamiento_microsoft(path, nit, tamano_letra, correo_origen):
         
         logging.info(f'PDF generado exitosamente: {pdf_path}')
 
-        if not os.path.exists(cfg.ARCHIVO_DIRECCIONES):
-            logging.error(f"No se encontró el archivo de direcciones: {cfg.ARCHIVO_DIRECCIONES}")
+        if not os.path.exists(cfg.ARCHIVO_DIRECCIONES)  and os.path.exists(cfg.ARCHIVO_INFO_CORREOS):
+            logging.error(f"Archivo direcciones.txt o info_correo.txt no fue encontrado")
             return False
         
-        enviado = EnviadorCorreo.enviar_correo_make(nit, pdf_path, correo_origen, cfg.ARCHIVO_DIRECCIONES)
-        
+        enviado = EnviadorCorreo.enviar_correo_make(nit, 
+                                                    pdf_path, 
+                                                    correo_origen, 
+                                                    cfg.ARCHIVO_DIRECCIONES, 
+                                                    cfg.ARCHIVO_INFO_CORREOS)
         # Registrar estado de envío
         estado = 'ENVIADO_A_MAKE' if enviado else 'ERROR'
         estado_path = os.path.join(cfg.ESTADO_DIR, f'{nit}_estado.txt')
@@ -96,11 +102,8 @@ def main(*args):
             elif len(sys.argv) == 5:
                 resultado = procesamiento_microsoft(path, nit, tamano_letra, correo_origen)
             else:
-                resultado = None         
+                resultado = None
 
-            logging.info(f"Ruta proporcionada: {path}")
-            logging.info(f"NIT proporcionado: {nit}")
-            logging.info(f"Tamaño de letra: {tamano_letra}")
             sys.exit(0 if resultado else 1)
 
     except Exception as e:

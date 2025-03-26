@@ -1,11 +1,13 @@
+from collections import namedtuple
 import os
 import smtplib
 import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
-
 import requests
+
+info_correo = namedtuple('info_correo', ['asunto', 'cuerpo'])
 
 class EnviadorCorreo:
     @staticmethod
@@ -23,21 +25,38 @@ class EnviadorCorreo:
         except Exception as e:
             logging.error(f"Error buscando correo: {e}")
         return None
+    
+    @staticmethod
+    def obtener_info_correo(archivo_info_correos):
+        try:
+            with open(archivo_info_correos, 'r') as file:
+                lineas = file.readlines()
+                asunto = lineas[0].strip()
+                cuerpo = ''.join(lineas[1:]).strip()
+            if asunto and cuerpo:
+                return info_correo(asunto, cuerpo)
+            logging.warning(f"Asunto: {asunto} Cuerpo: {cuerpo}")
+            return None
+        except FileNotFoundError:
+            logging.error(f"Archivo info_correo no encontrado: {archivo_info_correos}")
+        except Exception as e:
+            logging.error(f"Error buscando informacion del correo: {e}")
+        return None
 
     @staticmethod
-    def enviar_correo_gmail(nit, pdf_path, config_correo, archivo_direcciones):
+    def enviar_correo_gmail(nit, pdf_path, config_correo, archivo_direcciones, archivo_info_correos):
         try:
             correo = EnviadorCorreo.obtener_correo_por_nit(nit, archivo_direcciones)
-            print(correo)
+            info = EnviadorCorreo.obtener_info_correo(archivo_info_correos)
+            asunto, cuerpo = (info.asunto, info.cuerpo) if info else ("", "")
             if not correo:
                 return False
-
+            print(correo)
             msg = MIMEMultipart()
             msg['From'] = config_correo['usuario']
             msg['To'] = correo
-            msg['Subject'] = 'Estado de Cuenta Curtipieles'
-
-            body = 'Adjunto encontrará su estado de cuenta.'
+            msg['Subject'] = asunto
+            body = cuerpo
             msg.attach(MIMEText(body, 'plain'))
 
             with open(pdf_path, 'rb') as pdf_file:
@@ -56,52 +75,57 @@ class EnviadorCorreo:
             logging.error(f"Error SMTP enviando correo: {e}")
         except Exception as e:
             logging.error(f"Error inesperado enviando correo: {e}")
-        
         return False
 
     @staticmethod
-    def enviar_correo_make(nit, pdf_path, correo_origen, archivo_direcciones):
+    def enviar_correo_make(nit, pdf_path, correo_origen, archivo_direcciones, archivo_info_correos):
         try:
             correo = EnviadorCorreo.obtener_correo_por_nit(nit, archivo_direcciones)
+            info = EnviadorCorreo.obtener_info_correo(archivo_info_correos)
+            asunto, cuerpo = (info.asunto, info.cuerpo) if info else ("", "")
             if not correo:
                 return False
             
-            # Preparar datos para Make
+            import base64
+            with open(pdf_path, 'rb') as pdf_file:
+                pdf_base64 = base64.b64encode(pdf_file.read()).decode('utf-8')
+
             make_config = {
-                "from": [{"emailAddress": {"address": correo_origen}}],
-                "toRecipients": [{"emailAddress": {"address": correo}}],
-                "subject": "Estado de Cuenta Curtipieles",
-                "body": "Adjunto encontrará su estado de cuenta.",
+                "toRecipients": [{"email": correo}],
+                "from": {"email": correo_origen},
+                "subject": asunto,
+                "body": {
+                    "content": cuerpo,
+                    "contentType": "text"
+                },
                 "attachments": [
                     {
-                    "filename": "estado_cuenta.pdf",
-                    "data": pdf_path
+                        "contentBytes": pdf_base64,
+                        "name": os.path.splitext(os.path.basename(pdf_path))[0]
                     }
                 ]
             }
-            
-            # Guardar configuración para Make
-            import json
-            make_config_path = os.path.join(os.path.dirname(pdf_path), f'{nit}_make_config.json')
-            with open(make_config_path, 'w') as f:
-                json.dump(make_config, f)
-            
+
             webhook_url = "https://hook.us2.make.com/r42elu8lgoha8u2v596he5qkgsgk47kq"
-            
-            # Enviar la solicitud a Make
+
+            # Enviar la solicitud
             response = requests.post(
                 webhook_url,
                 headers={"Content-Type": "application/json"},
-                data=json.dumps(make_config)
+                json=make_config
             )
-            
+            import json
+            print("Payload enviado a Make:")
+            print(json.dumps(make_config, indent=2))
+            print(f"Respuesta: {response.status_code} - {response.text}")
+
             if response.status_code == 200:
                 logging.info(f"Datos enviados exitosamente a Make para NIT: {nit}")
                 return True
             else:
                 logging.error(f"Error al enviar datos a Make: {response.status_code} - {response.text}")
                 return False
-            
+
         except Exception as e:
             logging.error(f"Error preparando envío por Make: {e}")
             return False
