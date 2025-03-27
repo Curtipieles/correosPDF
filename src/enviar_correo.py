@@ -29,7 +29,7 @@ class EnviadorCorreo:
     @staticmethod
     def obtener_info_correo(archivo_info_correos):
         try:
-            with open(archivo_info_correos, 'r') as file:
+            with open(archivo_info_correos, 'r', encoding='utf-8') as file:
                 lineas = file.readlines()
                 asunto = lineas[0].strip()
                 cuerpo = ''.join(lineas[1:]).strip()
