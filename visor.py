@@ -10,15 +10,14 @@ class ventanaEmail:
         self.root = root
         self.root.title("Nuevo mensaje de correo")
 
-        # Definir la fuente para toda la aplicación - ignorando el parámetro tamano_letra
-        self.font_family = "Helvetica"  # Una fuente sans-serif moderna y limpia
-        self.normal_font = (self.font_family, 10)  # Tamaño fijo para la interfaz
+        self.font_family = "Helvetica"
+        self.normal_font = (self.font_family, 10)
         self.bold_font = (self.font_family, 10, "bold")
-        self.large_font = (self.font_family, 14)  # Para íconos y encabezados
+        self.large_font = (self.font_family, 14)
 
         self.path = path
         self.nit = nit
-        self.tamano_letra = tamano_letra  # Seguimos guardando el parámetro por si se usa en otro lugar
+        self.tamano_letra = tamano_letra
         self.correo_origen = correo_origen
         self.correo_destino = correo_destino
         self.asunto = asunto
