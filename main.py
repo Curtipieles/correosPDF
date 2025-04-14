@@ -69,7 +69,6 @@ def procesamiento_gmail(path, nit, tamano_letra, correo_origen, app_pw):
 
     except Exception as e:
         logging.error(f"Error procesando archivo: {e}")
-        # Registrar la excepción general
         EstadoCorreo.generar_estado(nit, "ERROR", str(e), pdf_path if 'pdf_path' in locals() else None, correo_origen)
         return False
     
