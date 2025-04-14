@@ -4,13 +4,11 @@ import logging
 import src.config as cfg
 from src.conversor import ConversorPDF
 from src.enviar_correo import EnviadorCorreo
+from src.estado import EstadoCorreo
 
 # Configuración de logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]
-)
+logging.getLogger('fontTools').setLevel(logging.WARNING)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler()])
 
 def procesamiento_gmail(path, nit, tamano_letra, correo_origen, app_pw):
     try:
@@ -20,35 +18,59 @@ def procesamiento_gmail(path, nit, tamano_letra, correo_origen, app_pw):
         os.makedirs(cfg.PDF_DIR, exist_ok=True)
         os.makedirs(cfg.ESTADO_DIR, exist_ok=True)
 
+        pdf_path = None
+        estado_correo = "ERROR"
+        detalles_error = None
+        
+        # Convertir a PDF
         pdf_path = ConversorPDF.convertir_a_pdf(path, nit, tamano_letra, cfg.PDF_DIR)
         
         if not pdf_path:
-            logging.error(f"No se pudo generar el PDF para NIT: {nit}")
+            detalles_error = f"No se pudo generar el PDF para NIT: {nit}"
+            logging.error(detalles_error)
+            EstadoCorreo.generar_estado(nit, "ERROR", detalles_error, None, correo_origen)
             return False
 
         logging.info(f"PDF generado exitosamente: {pdf_path}")
 
-        if not os.path.exists(cfg.ARCHIVO_DIRECCIONES) and os.path.exists(cfg.ARCHIVO_INFO_CORREOS):
-            logging.error(f"Archivo direcciones.txt o info_correo.txt no fue encontrado")
+        if not os.path.exists(cfg.ARCHIVO_DIRECCIONES) or not os.path.exists(cfg.ARCHIVO_INFO_CORREOS):
+            detalles_error = f"Archivo direcciones.txt o info_correo.txt no fue encontrado"
+            logging.error(detalles_error)
+            EstadoCorreo.generar_estado(nit, "ERROR", detalles_error, pdf_path, correo_origen)
             return False
 
         smtp_config = cfg.obtener_config_smtp(correo_origen, app_pw)
         enviado = EnviadorCorreo.enviar_correo_gmail(nit, 
-                                                     pdf_path, 
-                                                     smtp_config, 
-                                                     cfg.ARCHIVO_DIRECCIONES, 
-                                                     cfg.ARCHIVO_INFO_CORREOS)
+                                                   pdf_path, 
+                                                   smtp_config,
+                                                   cfg.ARCHIVO_DIRECCIONES, 
+                                                   cfg.ARCHIVO_INFO_CORREOS)
         
-        estado = 'ENVIADO' if enviado else 'ERROR'
-        estado_path = os.path.join(cfg.ESTADO_DIR, f'{nit}_estado.txt')
-        with open(estado_path, 'w') as f:
-            f.write(estado)
+        # Determinar estado y detalles según resultado del envío
+        if enviado:
+            estado_correo = "ENVIADO"
+            detalles_error = None
+        else:
+            estado_correo = "ERROR"
+            detalles_error = "Error al enviar el correo electrónico"
         
-        logging.info(f"Estado de envío: {estado}")
+        registro_generado = EstadoCorreo.generar_estado(
+            nit, 
+            estado_correo, 
+            detalles_error, 
+            pdf_path, 
+            correo_origen
+        )
+        
+        if not registro_generado:
+            logging.warning(f"No se pudo generar el registro para el NIT: {nit}")
+        
         return enviado
 
     except Exception as e:
         logging.error(f"Error procesando archivo: {e}")
+        # Registrar la excepción general
+        EstadoCorreo.generar_estado(nit, "ERROR", str(e), pdf_path if 'pdf_path' in locals() else None, correo_origen)
         return False
     
 def main():
@@ -62,9 +84,13 @@ def main():
         if not sys.argv[2].isdigit():
             logging.error(f"NIT inválido: '{sys.argv[2]}'. Debe ser un valor numérico.")
             sys.exit(1)
-        if not sys.argv[3].isinstance() or not sys.argv[3] == 'P' or not sys.argv[3] == 'N':
-            logging.error(f'Tamaño de letra inválido: "{sys.argv[3]}". Debe ser una letra "P" o "N"')
+        if not isinstance(sys.argv[3], str):
+            logging.error(f"El argumento '{sys.argv[3]}'. Debe ser una letra: 'P' o una 'N'")
             sys.exit(1)
+        if not sys.argv[3] == "P":
+            if not sys.argv[3] == "N":
+                logging.error(f"El argumento '{sys.argv[3]}'. Debe ser una letra: 'P' o una 'N'")
+                sys.exit(1)
         if not '@' in sys.argv[4] or not '.' in sys.argv[4]:
             logging.error(f"Correo origen inválido: '{sys.argv[4]}'")
             sys.exit(1)

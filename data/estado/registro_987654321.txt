@@ -1,0 +1,9 @@
+NIT: 987654321
+Fecha De Envio: 2025-04-14 11:45:09
+Estado: ENVIADO
+Correo destino:  miprueba0111@gmail.com
+Detalles error: No hay detalles de error
+Ruta PDF: C:\curti\correosPDF\data\PDF\987654321.pdf
+Correo origen: samuel01alv@gmail.com
+Tamaño PDF: 25.88 KB
+ID transacción: 1d06b681

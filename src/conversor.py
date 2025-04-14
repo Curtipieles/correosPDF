@@ -35,12 +35,8 @@ class ConversorPDF:
                 logging.error(f"Archivo de fuente no encontrado: {source_pro_path}")
                 return None
             
-            # Registrar fuente personalizada
             pdf.add_font(DEFAULT_FONT['family'], '', source_pro_path, uni=True)
-            
             pdf.add_page()
-            
-            # Usar fuente personalizada
             pdf.set_font(DEFAULT_FONT['family'], size=font_size)
             
             margin_left = 14

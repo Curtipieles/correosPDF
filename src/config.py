@@ -57,6 +57,7 @@ def obtener_config_smtp(correo_usuario, app_pw):
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.dirname(CURRENT_DIR)
 
+# Normalizacion de la ruta para ser utilizada
 data_path = sys.argv[1] if len(sys.argv) > 1 else ""
 if os.path.isabs(data_path):
     DATA_DIR = data_path
