@@ -46,7 +46,6 @@ def procesamiento_gmail(path, nit, tamano_letra, correo_origen, app_pw):
                                                    cfg.ARCHIVO_DIRECCIONES, 
                                                    cfg.ARCHIVO_INFO_CORREOS)
         
-        # Determinar estado y detalles según resultado del envío
         if enviado:
             estado_correo = "ENVIADO"
             detalles_error = None
