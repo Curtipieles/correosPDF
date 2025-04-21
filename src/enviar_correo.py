@@ -134,7 +134,7 @@ class EnviadorCorreo:
             
             # Convertir HTML a texto plano de manera más sofisticada
             texto_plano = EnviadorCorreo._limpiar_texto_html(cuerpo)
-            texto_plano += "\n\n---\nCURTIPIELES S.A.S agradece su confianza.\nPara darte de baja, responde a este correo con el asunto 'unsubscribe'"
+            texto_plano += "\n\n---\nCurtipieles S.A.S agradece su confianza.\nPara darte de baja, responde a este correo con el asunto 'unsubscribe'"
             part_text = MIMEText(texto_plano, 'plain', 'utf-8')
             
             # Preparar la sección del encabezado dependiendo de si tenemos logo o no
