@@ -2,59 +2,59 @@ from collections import namedtuple
 from email.utils import formataddr, formatdate, make_msgid
 import smtplib
 import logging
-from src.config import LOGO_EMPRESA
+import time
+import re
+import os
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from email.mime.image import MIMEImage
-import time
-import re
+from src.config import LOGO_EMPRESA, ARCHIVO_DIRECCIONES, ARCHIVO_INFO_CORREOS
 
 info_correo = namedtuple('info_correo', ['asunto', 'cuerpo'])
 
 class EnviadorCorreo:
-    @staticmethod
-    def obtener_correo_por_nit(nit, archivo_direcciones):
+    def obtener_correo_por_codigo(self, codigo_archivo):
+        """Obtiene el correo destino según el código de archivo."""
         try:
-            with open(archivo_direcciones, 'r') as file:
+            with open(ARCHIVO_DIRECCIONES, 'r') as file:
                 for linea in file:
                     datos = linea.strip().split(',')
-                    if datos[0] == nit:
+                    # Busca por nombre completo del archivo (antes era solo por NIT)
+                    if datos[0] == codigo_archivo:
                         return datos[1]
-            logging.warning(f"NIT {nit} no encontrado")
+            logging.warning(f"Código {codigo_archivo} no encontrado en direcciones")
             return None
         except FileNotFoundError:
-            logging.error(f"Archivo de direcciones no encontrado: {archivo_direcciones}")
+            logging.error(f"Archivo de direcciones no encontrado: {ARCHIVO_DIRECCIONES}")
         except Exception as e:
             logging.error(f"Error buscando correo: {e}")
         return None
     
-    @staticmethod
-    def obtener_info_correo(archivo_info_correos):
+    def obtener_info_correo(self):
+        """Obtiene la información de asunto y cuerpo del correo."""
         try:
-            with open(archivo_info_correos, 'r', encoding='utf-8') as file:
+            with open(ARCHIVO_INFO_CORREOS, 'r', encoding='utf-8') as file:
                 lineas = file.readlines()
                 asunto = lineas[0].strip()
                 cuerpo = ''.join(lineas[1:]).strip()
             if asunto and cuerpo:
                 return info_correo(asunto, cuerpo)
-            logging.warning(f"Asunto: {asunto} Cuerpo: {cuerpo}")
+            logging.warning(f"Asunto o cuerpo vacío en archivo info_correo")
             return None
         except FileNotFoundError:
-            logging.error(f"Archivo info_correo no encontrado: {archivo_info_correos}")
+            logging.error(f"Archivo info_correo no encontrado: {ARCHIVO_INFO_CORREOS}")
         except Exception as e:
-            logging.error(f"Error buscando informacion del correo: {e}")
+            logging.error(f"Error leyendo información del correo: {e}")
         return None
 
-    @staticmethod
-    def _limpiar_texto_html(texto):
-        # Elimina etiquetas HTML para obtener el texto plano para conteo de palabras
+    def _limpiar_texto_html(self, texto):
+        """Elimina etiquetas HTML para obtener texto plano."""
         return re.sub(r'<[^>]*>', '', texto)
     
-    @staticmethod
-    def _asegurar_longitud_minima(cuerpo):
-        """Asegura que el cuerpo del correo tenga suficiente texto (al menos 300 palabras)"""
-        texto_plano = EnviadorCorreo._limpiar_texto_html(cuerpo)
+    def _asegurar_longitud_minima(self, cuerpo):
+        """Asegura que el cuerpo del correo tenga suficiente texto (al menos 300 palabras)."""
+        texto_plano = self._limpiar_texto_html(cuerpo)
         palabras = texto_plano.split()
         
         # Si el texto tiene menos de 300 palabras, añadir contenido adicional
@@ -78,20 +78,28 @@ class EnviadorCorreo:
             return cuerpo + contenido_adicional
         return cuerpo
 
-    @staticmethod
-    def enviar_correo_gmail(nit, pdf_path, config_correo, archivo_direcciones, archivo_info_correos):
+    def enviar_correo_gmail(self, codigo_archivo, pdf_path, config_correo):
+        """Envía un correo con el PDF adjunto usando Gmail."""
         try:
-            correo = EnviadorCorreo.obtener_correo_por_nit(nit, archivo_direcciones)
-            info = EnviadorCorreo.obtener_info_correo(archivo_info_correos)
-            asunto, cuerpo_original = (info.asunto, info.cuerpo) if info else ("", "") 
-            if not correo:
+            correo_destino = self.obtener_correo_por_codigo(codigo_archivo)
+            info = self.obtener_info_correo()
+            
+            if not correo_destino:
+                logging.error(f"No se encontró correo destino para {codigo_archivo}")
                 return False
+                
+            if not info:
+                logging.error("No se pudo obtener información del correo")
+                return False
+                
+            asunto, cuerpo_original = info.asunto, info.cuerpo
+            
             # Asegurar que el correo tiene suficiente texto para mejorar ratio imagen/texto
-            cuerpo = EnviadorCorreo._asegurar_longitud_minima(cuerpo_original)
+            cuerpo = self._asegurar_longitud_minima(cuerpo_original)
             
             msg = MIMEMultipart('alternative')
             msg['From'] = formataddr(('Curtipieles', config_correo['usuario']))
-            msg['To'] = correo
+            msg['To'] = correo_destino
             msg['Subject'] = asunto
             
             # Usar un Message-ID conforme a RFC 5322 con el dominio real del remitente
@@ -101,19 +109,19 @@ class EnviadorCorreo:
             
             # Otros encabezados importantes
             msg['Date'] = formatdate(localtime=True)
-            msg['Reply-To'] = 'no-reply+unsubscribe@' + config_correo['usuario'].split('@')[1]
+            msg['Reply-To'] = 'no-reply+unsubscribe@' + domain
             
             msg['Precedence'] = 'list'
-            msg['X-Mailer'] = f"Curtipieles Sistema CorreosPDF."
-            msg['X-Priority'] = '3'  # Prioridad (1=alta, 3=normal, 5=baja)
+            msg['X-Mailer'] = f"Curtipieles Sistema CorreosPDF"
+            msg['X-Priority'] = '3'  # Prioridad normal
             msg['X-MSMail-Priority'] = 'Normal'
 
             # Configuración de desuscripción según RFC 8058
-            unsubscribe_email = 'unsubscribe@' + config_correo['usuario'].split('@')[1]
-            msg['List-Unsubscribe'] = f"<mailto:{unsubscribe_email}?subject=unsubscribe-{nit}>"
+            unsubscribe_email = 'unsubscribe@' + domain
+            msg['List-Unsubscribe'] = f"<mailto:{unsubscribe_email}?subject=unsubscribe-{codigo_archivo}>"
             msg['List-Unsubscribe-Post'] = "List-Unsubscribe=One-Click"
-            msg['Feedback-ID'] = f"crtp:{nit}:{time.strftime('%Y%m')}"  # Para feedback loops
-
+            msg['Feedback-ID'] = f"crtp:{codigo_archivo}:{time.strftime('%Y%m')}"
+            
             msg['X-Spam-Status'] = 'No'
             msg['X-Spam-Score'] = '0.0'
             msg['X-Spam-Level'] = ''
@@ -132,28 +140,20 @@ class EnviadorCorreo:
                 logging.error(f"No se pudo cargar la imagen del logo: {e}")
                 logo_cid = ""
             
-            # Convertir HTML a texto plano de manera más sofisticada
-            texto_plano = EnviadorCorreo._limpiar_texto_html(cuerpo)
+            # Convertir HTML a texto plano
+            texto_plano = self._limpiar_texto_html(cuerpo)
             texto_plano += "\n\n---\nCurtipieles S.A.S agradece su confianza.\nPara darte de baja, responde a este correo con el asunto 'unsubscribe'"
             part_text = MIMEText(texto_plano, 'plain', 'utf-8')
             
             # Preparar la sección del encabezado dependiendo de si tenemos logo o no
-            encabezado_html = ""
-            if logo_cid:
-                encabezado_html = f"""
-                <div style="background-color: #4a2511; padding: 20px; text-align: center;">
-                    <img src="{logo_cid}" alt="Logo Curtipieles" style="max-height: 60px;">
-                    <h1 style="color: #ffffff; margin: 10px 0 0 0; font-size: 22px;">Curtipieles S.A.S</h1>
-                </div>
-                """
-            else:
-                encabezado_html = f"""
-                <div style="background-color: #4a2511; padding: 20px; text-align: center;">
-                    <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Curtipieles S.A.S</h1>
-                </div>
-                """
+            encabezado_html = f"""
+            <div style="background-color: #4a2511; padding: 20px; text-align: center;">
+                {"<img src='"+logo_cid+"' alt='Logo Curtipieles' style='max-height: 60px;'>" if logo_cid else ""}
+                <h1 style="color: #ffffff; margin: {"10px 0 0 0" if logo_cid else "0"}; font-size: {"22px" if logo_cid else "24px"};">Curtipieles S.A.S</h1>
+            </div>
+            """
             
-            # Versión HTML con mejor estructura y cumpliendo estándares
+            # Versión HTML con mejor estructura
             html_cuerpo = f"""
             <!DOCTYPE html>
             <html lang="es">
@@ -192,7 +192,7 @@ class EnviadorCorreo:
                         <div style="font-size:10px; color:#999; text-align:center; margin-top:20px; border-top:1px solid #eee; padding-top:15px;">
                             Este mensaje se envía a su dirección de correo electrónico porque es cliente de Curtipieles S.A.S.
                             <br>Si no desea recibir más comunicaciones, por favor 
-                            <a href="mailto:{unsubscribe_email}?subject=UNSUBSCRIBE-{nit}" style="color:#999; text-decoration:underline;">haga clic aquí</a>.
+                            <a href="mailto:{unsubscribe_email}?subject=UNSUBSCRIBE-{codigo_archivo}" style="color:#999; text-decoration:underline;">haga clic aquí</a>.
                         </div>
                     </div>
                 </div>
@@ -206,7 +206,7 @@ class EnviadorCorreo:
             msg.attach(part_html)
 
             # Adjuntar el PDF con un nombre más específico y profesional
-            nombre_pdf = f"Doc_Oficial_{nit}.pdf"
+            nombre_pdf = f"Doc_Oficial_{codigo_archivo}.pdf"
             with open(pdf_path, 'rb') as pdf_file:
                 part = MIMEApplication(
                     pdf_file.read(),
@@ -215,18 +215,18 @@ class EnviadorCorreo:
                 )
                 part.add_header('Content-Disposition', 'attachment', filename=nombre_pdf)
                 part.add_header('Content-Type', 'application/pdf')
-                part.add_header('Content-Description', f'Documento oficial Curtipieles para cliente {nit}')
+                part.add_header('Content-Description', f'Documento oficial Curtipieles para cliente {codigo_archivo}')
                 part.add_header('Content-Transfer-Encoding', 'base64')
                 part.add_header('X-Attachment-Id', f'doc_{time.strftime("%Y%m%d%H%M%S")}')
                 msg.attach(part)
 
-            # Enviar el correo con más tiempo de espera y mejor manejo de errores
+            # Enviar el correo con mejor manejo de errores
             try:
                 with smtplib.SMTP(config_correo['server'], config_correo['port'], timeout=20) as server:
                     server.starttls()
                     server.login(config_correo['usuario'], config_correo['app_pw'])
                     server.send_message(msg)
-                    logging.info(f"Correo enviado a {correo} para NIT {nit}")
+                    logging.info(f"Correo enviado a {correo_destino} para código {codigo_archivo}")
                     return True
             except smtplib.SMTPSenderRefused as e:
                 logging.error(f"Remitente rechazado: {e}")

@@ -1,12 +1,12 @@
 import os
 import logging
 from fpdf import FPDF
-from src.config import FONTS_DIR, DEFAULT_FONT, LOGO_EMPRESA
+from src.config import FONTS_DIR, DEFAULT_FONT, LOGO_EMPRESA, PDF_DIR
 
 class ConversorPDF:
-    @staticmethod
-    def validar_archivo(ruta_usuario, nit):
-        ruta_archivo = os.path.normpath(os.path.join(ruta_usuario, 'entrada', f'{nit}.txt'))
+    def validar_archivo(self, ruta_usuario, nombre_archivo):
+        """Valida que exista el archivo de entrada."""
+        ruta_archivo = os.path.normpath(os.path.join(ruta_usuario, 'entrada', f'{nombre_archivo}.txt'))
         if not os.path.exists(ruta_archivo):
             logging.error(f"Archivo no encontrado: {ruta_archivo}")
             return False
@@ -15,20 +15,16 @@ class ConversorPDF:
             return False
         return True
 
-    @staticmethod
-    def convertir_a_pdf(ruta_usuario, nit, tamano_letra, ruta_pdf):
+    def convertir_a_pdf(self, ruta_usuario, nombre_archivo, tamano_letra):
+        """Convierte un archivo txt a PDF."""
         try:
-            if not ConversorPDF.validar_archivo(ruta_usuario, nit):
+            if not self.validar_archivo(ruta_usuario, nombre_archivo):
                 return None
 
-            # Convertir la ruta del PDF a relativa al directorio base
-            pdf_dir = os.path.normpath(ruta_pdf)
-            os.makedirs(pdf_dir, exist_ok=True)
-
+            os.makedirs(PDF_DIR, exist_ok=True)
             font_size = 9 if tamano_letra == 'N' else 8
             
             pdf = PDF()
-            
             source_pro_path = os.path.normpath(os.path.join(FONTS_DIR, DEFAULT_FONT['file']))
 
             if not os.path.exists(source_pro_path):
@@ -48,7 +44,7 @@ class ConversorPDF:
             char_width = pdf.get_string_width("0")
             max_chars = int((margin_right - margin_left) / char_width)
             
-            ruta_archivo_txt = os.path.normpath(os.path.join(ruta_usuario, 'entrada', f'{nit}.txt'))
+            ruta_archivo_txt = os.path.normpath(os.path.join(ruta_usuario, 'entrada', f'{nombre_archivo}.txt'))
             with open(ruta_archivo_txt, 'r', encoding='utf-8') as file:
                 for linea in file:
                     if pdf.get_y() > pdf.h - 30:  # Verificar espacio en página
@@ -58,9 +54,8 @@ class ConversorPDF:
                     pdf.write(5, linea_cortada)
                     pdf.ln()
             
-            nombre_pdf = f'{nit}.pdf'
-            ruta_completa_pdf = os.path.normpath(os.path.join(pdf_dir, nombre_pdf))
-            source_pro_path = os.path.abspath(os.path.join(FONTS_DIR, DEFAULT_FONT['file']))
+            nombre_pdf = f'{nombre_archivo}.pdf'
+            ruta_completa_pdf = os.path.normpath(os.path.join(PDF_DIR, nombre_pdf))
             pdf.output(ruta_completa_pdf)
             logging.info(f"PDF generado: {ruta_completa_pdf}")
             return ruta_completa_pdf
