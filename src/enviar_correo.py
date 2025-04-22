@@ -4,7 +4,6 @@ import smtplib
 import logging
 import time
 import re
-import os
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
@@ -14,7 +13,8 @@ from src.config import LOGO_EMPRESA, ARCHIVO_DIRECCIONES, ARCHIVO_INFO_CORREOS
 info_correo = namedtuple('info_correo', ['asunto', 'cuerpo'])
 
 class EnviadorCorreo:
-    def obtener_correo_por_codigo(self, codigo_archivo):
+    @staticmethod
+    def obtener_correo_por_codigo(codigo_archivo):
         """Obtiene el correo destino según el código de archivo."""
         try:
             with open(ARCHIVO_DIRECCIONES, 'r') as file:
@@ -22,6 +22,7 @@ class EnviadorCorreo:
                     datos = linea.strip().split(',')
                     # Busca por nombre completo del archivo (antes era solo por NIT)
                     if datos[0] == codigo_archivo:
+                        print(codigo_archivo)
                         return datos[1]
             logging.warning(f"Código {codigo_archivo} no encontrado en direcciones")
             return None
@@ -107,8 +108,10 @@ class EnviadorCorreo:
             msg['Message-ID'] = make_msgid(domain=domain)
             msg['X-Authentication-Warning'] = f"{domain} sender verified"
             
-            # Otros encabezados importantes
+            # Fecha correo
             msg['Date'] = formatdate(localtime=True)
+            tiempo_colombia = time.time() - (5 * 3600) # Restamos 5 horas en segundos
+            msg['Date'] = formatdate(tiempo_colombia, localtime=False)
             msg['Reply-To'] = 'no-reply+unsubscribe@' + domain
             
             msg['Precedence'] = 'list'
@@ -246,5 +249,5 @@ class EnviadorCorreo:
                 logging.error(f"Error SMTP general: {e}")
 
         except Exception as e:
-            logging.error(f"Error inesperado enviando correo: {e}")
+            logging.error(f"Error inesperado enviando correo: {e}. Posible error de conexion")
         return False

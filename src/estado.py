@@ -10,6 +10,7 @@ class EstadoCorreo:
     def generar_estado(codigo_archivo, estado="ERROR", detalles_error=None, pdf_path=None, correo_origen=None):
         """Genera archivos de estado para el procesamiento de correos."""
         try:
+            print(f"CODIGO ARCHIVO: {codigo_archivo}, ESTADO: {estado}, DETALLES: {detalles_error}, PDF: {pdf_path}, CORREO ORIGEN: {correo_origen}")
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             enviador = EnviadorCorreo()
             correo_destino = enviador.obtener_correo_por_codigo(codigo_archivo)
@@ -71,6 +72,13 @@ class EstadoCorreo:
             registros_acumulados.insert(0, nuevo_registro)
             
             with open(estado_correos_path, 'w', encoding='utf-8') as file:
-                file
-        except Exception:
-            pass
+                file.write(encabezado)
+                file.write(separador)
+                file.writelines(registros_acumulados)
+
+            logging.info(f"Registro de envío guardado para NIT: {codigo_archivo}, ID: {id_transaccion}")
+            return True
+
+        except Exception as e:
+            logging.error(f"Error al generar registro de estado: {e}")
+            return False

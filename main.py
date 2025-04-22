@@ -15,10 +15,35 @@ class ProcesadorCorreos:
     def __init__(self, ruta_usuario, tamano_letra):
         self.ruta_usuario = ruta_usuario
         self.tamano_letra = tamano_letra
-        self.entrada_dir = os.path.join(ruta_usuario, 'entrada')
+        self.entrada_dir = cfg.ENTRADA_DIR
         self.credenciales = self._obtener_credenciales()
+
+    @staticmethod
+    def mostrar_barra_progreso(progreso, total, longitud=50, prefijo='Progreso:', sufijo='Completado', relleno='█', vacio='░'):
+        """
+        Args:
+            progreso (int): Cantidad de elementos procesados
+            total (int): Total de elementos a procesar
+            longitud (int): Longitud de la barra de progreso en caracteres
+            prefijo (str): Texto que precede a la barra
+            sufijo (str): Texto que sigue a la barra
+            relleno (str): Carácter para la parte completada de la barra
+            vacio (str): Carácter para la parte no completada de la barra
+        """
+        porcentaje = progreso / total
+        completado = int(longitud * porcentaje)
+        barra = relleno * completado + vacio * (longitud - completado)
+        porcentaje_texto = f"{100 * porcentaje:.1f}%"
         
-    def _obtener_credenciales(self):
+        # Sobrescribe la línea actual con la barra de progreso
+        print(f'\r{prefijo} |{barra}| {progreso}/{total} {porcentaje_texto} {sufijo}', end='', flush=True)
+        
+        # Agregar salto de línea cuando se completa
+        if progreso == total:
+            print()
+
+    @staticmethod        
+    def _obtener_credenciales():
         """Obtiene correo origen y contraseña del archivo correo_origen.txt"""
         try:
             with open(cfg.ARCHIVO_CORREO_ORIGEN, 'r') as f:
@@ -102,9 +127,12 @@ class ProcesadorCorreos:
                                        self.credenciales['correo'] if self.credenciales else None)
             return False
     
-    def procesar_todos(self, intervalo=60):
-        """Procesa todos los archivos en la carpeta de entrada con un intervalo de tiempo"""
+    def procesar_todos(self, intervalo_min=30, intervalo_max=60):
+        """Procesa todos los archivos en la carpeta de entrada con intervalos aleatorios
+        y descansos programados cada cierto número de envíos, mostrando una barra de progreso"""
         try:
+            import random
+            
             if not os.path.exists(self.entrada_dir):
                 logging.error(f"El directorio de entrada no existe: {self.entrada_dir}")
                 return False
@@ -115,16 +143,31 @@ class ProcesadorCorreos:
                 logging.info("No hay archivos para procesar")
                 return True
                 
-            logging.info(f"Se encontraron {len(archivos)} archivos para procesar")
+            total_archivos = len(archivos)
+            logging.info(f"Se encontraron {total_archivos} archivos para procesar")
+            
+            CORREOS_ANTES_DESCANSO = 30
+            TIEMPO_DESCANSO = 150  # 2.5 minutos en segundos
+            
+            # Mostrar barra inicial
+            ProcesadorCorreos.mostrar_barra_progreso(0, total_archivos, prefijo='Envío de correos:')
             
             for i, archivo in enumerate(archivos):
-                logging.info(f"Procesando {i+1}/{len(archivos)}: {archivo}")
+                logging.info(f"Procesando {i+1}/{total_archivos}: {archivo}")
                 self.procesar_archivo(archivo)
                 
-                # Si no es el último archivo, esperar el intervalo
-                if i < len(archivos) - 1:
-                    logging.info(f"Esperando {intervalo} segundos antes del siguiente envío...")
-                    time.sleep(intervalo)
+                # Actualizar barra de progreso
+                ProcesadorCorreos.mostrar_barra_progreso(i+1, total_archivos, prefijo='Envío de correos:')
+                
+                # Verificar si toca hacer un descanso (cada 30 correos)
+                if (i + 1) % CORREOS_ANTES_DESCANSO == 0 and i < total_archivos - 1:
+                    logging.info(f"Se han procesado {i+1} correos. Haciendo una pausa de {TIEMPO_DESCANSO/60} minutos...")
+                    time.sleep(TIEMPO_DESCANSO)
+                # Si no es el último archivo y no toca descanso, esperar un intervalo aleatorio
+                elif i < total_archivos - 1:
+                    intervalo_aleatorio = random.randint(intervalo_min, intervalo_max)
+                    logging.info(f"Esperando {intervalo_aleatorio} segundos antes del siguiente envío...")
+                    time.sleep(intervalo_aleatorio)
                     
             return True
             
@@ -134,21 +177,21 @@ class ProcesadorCorreos:
 
 def main():
     try:
-        if len(sys.argv) < 3:
-            logging.error("Argumentos insuficientes. Uso: python main.py <ruta_usuario> <tamano_letra>")
+        if not len(sys.argv) < 3 and not len(sys.argv) > 3:
+            logging.error("Argumentos incorrectos. Uso: python main.py <ruta_usuario> <tamano_letra>")
+            sys.exit(1)
+
+        if not os.path.exists(sys.argv[1]):
+            logging.error(f"La ruta '{sys.argv[1]}' no existe.")
+            sys.exit(1)
+            
+        if sys.argv[2] not in ['P', 'N']:
+            logging.error(f"El tamaño de letra '{sys.argv[2]}' es inválido. Debe ser 'P' o 'N'.")
             sys.exit(1)
             
         ruta_usuario = sys.argv[1]
         tamano_letra = sys.argv[2]
-        
-        if not os.path.exists(ruta_usuario):
-            logging.error(f"La ruta '{ruta_usuario}' no existe.")
-            sys.exit(1)
-            
-        if tamano_letra not in ['P', 'N']:
-            logging.error(f"El tamaño de letra '{tamano_letra}' es inválido. Debe ser 'P' o 'N'.")
-            sys.exit(1)
-            
+
         procesador = ProcesadorCorreos(ruta_usuario, tamano_letra)
         resultado = procesador.procesar_todos()
         
