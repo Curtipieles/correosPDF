@@ -177,7 +177,7 @@ class ProcesadorCorreos:
 
 def main():
     try:
-        if not len(sys.argv) < 3 and not len(sys.argv) > 3:
+        if not len(sys.argv) == 3:
             logging.error("Argumentos incorrectos. Uso: python main.py <ruta_usuario> <tamano_letra>")
             sys.exit(1)
 

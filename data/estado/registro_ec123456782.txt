@@ -1,9 +1,0 @@
-Archivo: ec123456782
-Fecha De Envio: 2025-04-22 14:43:53
-Estado: ENVIADO
-Correo destino:  prueba2025curti@hotmail.com
-Detalles error: No hay detalles de error
-Ruta PDF: C:\curti\correosPDF\data\pdf\ec123456782.pdf
-Correo origen: miprueba0111@gmail.com
-Tamaño PDF: 25.88 KB
-ID transacción: e4180adc

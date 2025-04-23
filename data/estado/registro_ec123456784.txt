@@ -1,9 +1,0 @@
-Archivo: ec123456784
-Fecha De Envio: 2025-04-22 14:45:11
-Estado: ENVIADO
-Correo destino:  curti001@outlook.com
-Detalles error: No hay detalles de error
-Ruta PDF: C:\curti\correosPDF\data\pdf\ec123456784.pdf
-Correo origen: miprueba0111@gmail.com
-Tamaño PDF: 25.88 KB
-ID transacción: 8e2c3370

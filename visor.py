@@ -8,98 +8,10 @@ from main import ProcesadorCorreos
 import src.config as cfg
 import subprocess
 import platform
-from fpdf import FPDF
-from src.config import FONTS_DIR, DEFAULT_FONT, LOGO_EMPRESA, PDF_DIR
-
-class PDF(FPDF):
-    def header(self):
-        # Usar logo de la empresa
-        if os.path.exists(LOGO_EMPRESA):
-            self.image(LOGO_EMPRESA, x=14, y=8, w=32)
-        
-        self.set_font("Helvetica", size=10)
-        self.set_xy(19, 27)
-        self.cell(0, 5, f"NIT: 800.085.026-8", ln=True, align='L')
-        self.ln(1)
-
-    def footer(self):
-        self.set_y(-21)  
-        self.set_font("Helvetica", 'BI', 10)
-        self.cell(0, 4, "LA NUEVA GENERACIÓN DE CUERO", ln=True, align='C')
-        margen = 15
-        posicion_inicial = margen
-        posicion_final = self.w - margen
-        self.line(posicion_inicial, self.get_y() + 2, posicion_final, self.get_y() + 2)
-        self.ln(4)
-        self.set_font("Helvetica", "", 9)
-        self.multi_cell(0, 6, f"Calle 8 No. 20-15 El Cerrito (valle, Col) - PBX: (092) 2565774 Fax: (092) 2565389 Tels: 2564859 - 2564860 e-mail: contabilidadcurti@gmail.com", align='C')
-    
-    def get_effective_height(self):
-        return self.h - 1 - 4
-
-class ConversorPDF:
-    def validar_archivo(self, ruta_usuario, nombre_archivo):
-        """Valida que exista el archivo de entrada."""
-        ruta_archivo = os.path.normpath(os.path.join(ruta_usuario, 'entrada', f'{nombre_archivo}.txt'))
-        if not os.path.exists(ruta_archivo):
-            logging.error(f"Archivo no encontrado: {ruta_archivo}")
-            return False
-        if not os.access(ruta_archivo, os.R_OK):
-            logging.error(f"Sin permisos de lectura: {ruta_archivo}")
-            return False
-        return True
-
-    def convertir_a_pdf(self, ruta_usuario, nombre_archivo, tamano_letra):
-        """Convierte un archivo txt a PDF."""
-        try:
-            if not self.validar_archivo(ruta_usuario, nombre_archivo):
-                return None
-
-            os.makedirs(PDF_DIR, exist_ok=True)
-            font_size = 9 if tamano_letra == 'N' else 8
-            
-            pdf = PDF()
-            source_pro_path = os.path.normpath(os.path.join(FONTS_DIR, DEFAULT_FONT['file']))
-
-            if not os.path.exists(source_pro_path):
-                logging.error(f"Archivo de fuente no encontrado: {source_pro_path}")
-                return None
-            
-            pdf.add_font(DEFAULT_FONT['family'], '', source_pro_path, uni=True)
-            pdf.add_page()
-            pdf.set_font(DEFAULT_FONT['family'], size=font_size)
-            
-            margin_left = 14
-            margin_right = 195
-            pdf.set_left_margin(margin_left)
-            pdf.set_right_margin(pdf.w - margin_right)
-            pdf.set_y(34)
-            
-            char_width = pdf.get_string_width("0")
-            max_chars = int((margin_right - margin_left) / char_width)
-            
-            ruta_archivo_txt = os.path.normpath(os.path.join(ruta_usuario, 'entrada', f'{nombre_archivo}.txt'))
-            with open(ruta_archivo_txt, 'r', encoding='utf-8') as file:
-                for linea in file:
-                    if pdf.get_y() > pdf.h - 30:  # Verificar espacio en página
-                        pdf.add_page()
-                    
-                    linea_cortada = linea.rstrip('\n')[:max_chars]
-                    pdf.write(5, linea_cortada)
-                    pdf.ln()
-            
-            nombre_pdf = f'{nombre_archivo}.pdf'
-            ruta_completa_pdf = os.path.normpath(os.path.join(PDF_DIR, nombre_pdf))
-            pdf.output(ruta_completa_pdf)
-            logging.info(f"PDF generado: {ruta_completa_pdf}")
-            return ruta_completa_pdf
-
-        except Exception as e:
-            logging.error(f"Error generando PDF: {e}")
-            return None
+from src.conversor import ConversorPDF
 
 class ventanaEmail:
-    def __init__(self, root, path, nit, tamano_letra, correo_origen, correo_destino, asunto, cuerpo):
+    def __init__(self, root, path, nombre_archivo, tamano_letra, correo_origen, correo_destino, asunto, cuerpo):
         self.root = root
         self.root.title("Nuevo mensaje de correo")
 
@@ -109,7 +21,7 @@ class ventanaEmail:
         self.large_font = (self.font_family, 14)
 
         self.path = path
-        self.nit = nit
+        self.nombre_archivo = nombre_archivo
         self.tamano_letra = tamano_letra
         self.correo_origen = correo_origen
         self.correo_destino = correo_destino
@@ -119,7 +31,6 @@ class ventanaEmail:
         # Instanciar el conversor PDF
         self.conversor = ConversorPDF()
         
-        # La ruta del PDF se establecerá después de generarlo
         self.pdf_path = None
 
         self.from_entry = None
@@ -231,7 +142,7 @@ class ventanaEmail:
         # Vincular el evento de clic al botón de adjunto
         attachment_btn.bind("<Button-1>", self.generar_y_abrir_pdf)
         
-        pdf_label = tk.Label(footer_frame, text=f'{self.nit}.pdf', font=self.normal_font, bg=self.bg_color, cursor="hand2")
+        pdf_label = tk.Label(footer_frame, text=f'{self.nombre_archivo}.pdf', font=self.normal_font, bg=self.bg_color, cursor="hand2")
         pdf_label.grid(row=0, column=1, padx=5)
         # Vincular el evento de clic a la etiqueta del nombre del PDF
         pdf_label.bind("<Button-1>", self.generar_y_abrir_pdf)
@@ -255,8 +166,8 @@ class ventanaEmail:
             wait_label.pack(expand=True, fill="both", padx=20, pady=20)
             wait_window.update()
             
-            # Generar el PDF
-            self.pdf_path = self.conversor.convertir_a_pdf(self.path, self.nit, self.tamano_letra)
+            # Generar el PDF utilizando el conversor
+            self.pdf_path = self.conversor.convertir_a_pdf(self.path, self.nombre_archivo, self.tamano_letra)
             
             # Cerrar la ventana de espera
             wait_window.destroy()
@@ -270,41 +181,45 @@ class ventanaEmail:
                 else:  # Linux y otros
                     subprocess.call(('xdg-open', self.pdf_path))
             else:
-                messagebox.showerror("Error", f"No se pudo generar el PDF para el NIT: {self.nit}")
+                messagebox.showerror("Error", f"No se pudo generar el PDF para el NIT: {self.nombre_archivo}")
         except Exception as e:
             messagebox.showerror("Error", f"Error al procesar el PDF: {str(e)}")
 
 def main():
     try:
-        if not len(sys.argv) > 3 and not len(sys.argv) < 3:
-            print("tech")
-            if not os.path.exists(sys.argv[1]):
+        print(len(sys.argv))
+        if not len(sys.argv) == 3:
+            logging.error("Argumentos incorrectos. Uso: python main.py <ruta_usuario> <tamano_letra>")
+            sys.exit(1)
+
+        if not os.path.exists(sys.argv[1]):
                 logging.error(f"La ruta '{sys.argv[1]}' no existe.")
                 sys.exit(1)
 
-            if sys.argv[2] not in ['P', 'N']:
-                logging.error(f"El tamaño de letra '{sys.argv[2]}' es inválido. Debe ser 'P' o 'N'.")
-                sys.exit(1)
+        if sys.argv[2] not in ['P', 'N']:
+            logging.error(f"El tamaño de letra '{sys.argv[2]}' es inválido. Debe ser 'P' o 'N'.")
+            sys.exit(1)
 
-            path = sys.argv[1]
-            tamano_letra = sys.argv[2]
-            archivos = [i for i in os.listdir(cfg.ENTRADA_DIR) if i.endswith('.txt')] # Listamos archivos txt
-            nit = os.path.splitext(archivos[0])[0] if archivos else None # Tomamos el primer archivo de la lista
-            datos_correo = ProcesadorCorreos._obtener_credenciales()
-            correo_origen = datos_correo['correo']
-            correo_destino = EnviadorCorreo.obtener_correo_por_codigo(nit)
-            info = EnviadorCorreo.obtener_info_correo(cfg.ARCHIVO_INFO_CORREOS)
-            asunto, cuerpo = (info.asunto, info.cuerpo) if info else ("", "")
-            if not correo_destino:
-                return False
+        path = sys.argv[1]
+        tamano_letra = sys.argv[2]
+        archivos = [i for i in os.listdir(cfg.ENTRADA_DIR) if i.endswith('.txt')] # Listamos archivos txt
+        nombre_archivo = os.path.splitext(archivos[0])[0] if archivos else None # Tomamos el primer archivo de la lista
+        datos_correo = ProcesadorCorreos._obtener_credenciales()
+        correo_origen = datos_correo['correo']
+        correo_destino = EnviadorCorreo.obtener_correo_por_codigo(nombre_archivo)
+        info = EnviadorCorreo.obtener_info_correo(cfg.ARCHIVO_INFO_CORREOS)
+        asunto, cuerpo = (info.asunto, info.cuerpo) if info else ("", "")
+        if not correo_destino:
+            return False
+        
+        del archivos, datos_correo # Eliminamos variables q no necesitamos
+        
+        root = tk.Tk()
+        root.geometry("700x500+300+100") # ("ancho", "alto", "eje x", "eje y")
+        root.minsize(500, 400) #propiedad para establecer un tamaño minimo de la interface
+        app = ventanaEmail(root, path, nombre_archivo, tamano_letra, correo_origen, correo_destino, asunto, cuerpo)
+        root.mainloop()
             
-            del archivos, datos_correo # Eliminamos variables q no necesitamos
-            
-            root = tk.Tk()
-            root.geometry("700x500+300+100") # ("ancho", "alto", "eje x", "eje y")
-            root.minsize(500, 400) #propiedad para establecer un tamaño minimo de la interface
-            app = ventanaEmail(root, path, nit, tamano_letra, correo_origen, correo_destino, asunto, cuerpo)
-            root.mainloop()
             
     except Exception as e:
         logging.error(f"Error en ejecución principal: {e}")
