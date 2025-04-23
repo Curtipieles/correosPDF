@@ -47,9 +47,9 @@ class ventanaEmail:
         self.root.grid_rowconfigure(3, weight=0)  # Asunto
         self.root.grid_rowconfigure(4, weight=1)  # Cuerpo del correo
         self.root.grid_rowconfigure(5, weight=0)  # Pie de página        
-        self.header_bg = "#1E88E5"
+        self.header_bg = "#4a2511"
         self.bg_color = "#F5F5F5"
-        self.button_color = "#1E88E5"
+        self.button_color = "#4a2511"
         
         self.root.configure(bg=self.bg_color)
         self.root.bind("<Configure>", self.on_resize) # Asegurar que los widgets se ajusten correctamente al nuevo tamaño
@@ -187,7 +187,6 @@ class ventanaEmail:
 
 def main():
     try:
-        print(len(sys.argv))
         if not len(sys.argv) == 3:
             logging.error("Argumentos incorrectos. Uso: python main.py <ruta_usuario> <tamano_letra>")
             sys.exit(1)
