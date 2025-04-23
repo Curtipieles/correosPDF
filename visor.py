@@ -1,12 +1,17 @@
 import logging
+import os
 import sys
 import tkinter as tk
-from tkinter import scrolledtext
+from tkinter import scrolledtext, messagebox
 from src.enviar_correo import EnviadorCorreo
+from main import ProcesadorCorreos
 import src.config as cfg
+import subprocess
+import platform
+from src.conversor import ConversorPDF
 
 class ventanaEmail:
-    def __init__(self, root, path, nit, tamano_letra, correo_origen, correo_destino, asunto, cuerpo):
+    def __init__(self, root, path, nombre_archivo, tamano_letra, correo_origen, correo_destino, asunto, cuerpo):
         self.root = root
         self.root.title("Nuevo mensaje de correo")
 
@@ -16,12 +21,17 @@ class ventanaEmail:
         self.large_font = (self.font_family, 14)
 
         self.path = path
-        self.nit = nit
+        self.nombre_archivo = nombre_archivo
         self.tamano_letra = tamano_letra
         self.correo_origen = correo_origen
         self.correo_destino = correo_destino
         self.asunto = asunto
         self.cuerpo = cuerpo
+        
+        # Instanciar el conversor PDF
+        self.conversor = ConversorPDF()
+        
+        self.pdf_path = None
 
         self.from_entry = None
         self.to_entry = None
@@ -129,9 +139,13 @@ class ventanaEmail:
         # Botones de la izquierda
         attachment_btn = tk.Label(footer_frame, text="📎", font=self.large_font, bg=self.bg_color, cursor="hand2")
         attachment_btn.grid(row=0, column=0, padx=5)
+        # Vincular el evento de clic al botón de adjunto
+        attachment_btn.bind("<Button-1>", self.generar_y_abrir_pdf)
         
-        emoji_btn = tk.Label(footer_frame, text=f'{self.nit}.pdf', font=self.normal_font, bg=self.bg_color, cursor="hand2")
-        emoji_btn.grid(row=0, column=1, padx=5)
+        pdf_label = tk.Label(footer_frame, text=f'{self.nombre_archivo}.pdf', font=self.normal_font, bg=self.bg_color, cursor="hand2")
+        pdf_label.grid(row=0, column=1, padx=5)
+        # Vincular el evento de clic a la etiqueta del nombre del PDF
+        pdf_label.bind("<Button-1>", self.generar_y_abrir_pdf)
 
         trash_btn = tk.Label(footer_frame, text="🗑️", font=self.large_font, bg=self.bg_color, cursor="hand2")
         trash_btn.grid(row=0, column=5, padx=5)
@@ -139,24 +153,73 @@ class ventanaEmail:
         send_btn = tk.Button(footer_frame, text="Send", font=self.normal_font, bg=self.button_color, fg="white", relief=tk.FLAT, padx=15, pady=5, cursor="hand2")
         send_btn.grid(row=0, column=6, padx=5)
 
+    def generar_y_abrir_pdf(self, event=None):
+        """Método para generar el PDF y abrirlo con la aplicación predeterminada del sistema"""
+        try:
+            # Mostrar mensaje de espera mientras se genera el PDF
+            wait_window = tk.Toplevel(self.root)
+            wait_window.title("Generando PDF")
+            wait_window.geometry("300x100")
+            wait_window.transient(self.root)
+            wait_window.grab_set()
+            wait_label = tk.Label(wait_window, text="Generando PDF, por favor espere...")
+            wait_label.pack(expand=True, fill="both", padx=20, pady=20)
+            wait_window.update()
+            
+            # Generar el PDF utilizando el conversor
+            self.pdf_path = self.conversor.convertir_a_pdf(self.path, self.nombre_archivo, self.tamano_letra)
+            
+            # Cerrar la ventana de espera
+            wait_window.destroy()
+            
+            if self.pdf_path and os.path.exists(self.pdf_path):
+                # Abre el PDF con la aplicación predeterminada según el sistema operativo
+                if platform.system() == 'Darwin':  # macOS
+                    subprocess.call(('open', self.pdf_path))
+                elif platform.system() == 'Windows':  # Windows
+                    os.startfile(self.pdf_path)
+                else:  # Linux y otros
+                    subprocess.call(('xdg-open', self.pdf_path))
+            else:
+                messagebox.showerror("Error", f"No se pudo generar el PDF para el NIT: {self.nombre_archivo}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al procesar el PDF: {str(e)}")
+
 def main():
     try:
-        if len(sys.argv) >= 5 and len(sys.argv) <= 6:
-            path = sys.argv[1]
-            nit = sys.argv[2]
-            tamano_letra = sys.argv[3]
-            correo_origen = sys.argv[4]
-            correo_destino = EnviadorCorreo.obtener_correo_por_nit(nit, cfg.ARCHIVO_DIRECCIONES)
-            info = EnviadorCorreo.obtener_info_correo(cfg.ARCHIVO_INFO_CORREOS)
-            asunto, cuerpo = (info.asunto, info.cuerpo) if info else ("", "")
-            if not correo_destino:
-                return False
+        print(len(sys.argv))
+        if not len(sys.argv) == 3:
+            logging.error("Argumentos incorrectos. Uso: python main.py <ruta_usuario> <tamano_letra>")
+            sys.exit(1)
+
+        if not os.path.exists(sys.argv[1]):
+                logging.error(f"La ruta '{sys.argv[1]}' no existe.")
+                sys.exit(1)
+
+        if sys.argv[2] not in ['P', 'N']:
+            logging.error(f"El tamaño de letra '{sys.argv[2]}' es inválido. Debe ser 'P' o 'N'.")
+            sys.exit(1)
+
+        path = sys.argv[1]
+        tamano_letra = sys.argv[2]
+        archivos = [i for i in os.listdir(cfg.ENTRADA_DIR) if i.endswith('.txt')] # Listamos archivos txt
+        nombre_archivo = os.path.splitext(archivos[0])[0] if archivos else None # Tomamos el primer archivo de la lista
+        datos_correo = ProcesadorCorreos._obtener_credenciales()
+        correo_origen = datos_correo['correo']
+        correo_destino = EnviadorCorreo.obtener_correo_por_codigo(nombre_archivo)
+        info = EnviadorCorreo.obtener_info_correo(cfg.ARCHIVO_INFO_CORREOS)
+        asunto, cuerpo = (info.asunto, info.cuerpo) if info else ("", "")
+        if not correo_destino:
+            return False
+        
+        del archivos, datos_correo # Eliminamos variables q no necesitamos
+        
+        root = tk.Tk()
+        root.geometry("700x500+300+100") # ("ancho", "alto", "eje x", "eje y")
+        root.minsize(500, 400) #propiedad para establecer un tamaño minimo de la interface
+        app = ventanaEmail(root, path, nombre_archivo, tamano_letra, correo_origen, correo_destino, asunto, cuerpo)
+        root.mainloop()
             
-            root = tk.Tk()
-            root.geometry("700x500+300+100") # ("ancho", "alto", "eje x", "eje y")
-            root.minsize(500, 400) #propiedad para establecer un tamaño minimo de la interface
-            app = ventanaEmail(root, path, nit, tamano_letra, correo_origen, correo_destino, asunto, cuerpo)
-            root.mainloop()
             
     except Exception as e:
         logging.error(f"Error en ejecución principal: {e}")

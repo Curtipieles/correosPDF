@@ -1,9 +1,5 @@
-123456781, curti001@outlook.com
-123456782, curti0001@outlook.com
-123456783, curt2025@hotmail.com
-123456784, samueluwu88@gmail.com
-123456785, prueba2025curti@hotmail.com
-123456786, curti2025prueba@hotmail.com
-123456787, test-ka7qybgmy@srv1.mail-tester.com
-123456788, curtiprue2025@outlook.com
-123456789, curti010@outlook.com
+ec123456781, curti2025@hotmail.com
+ec123456782, prueba2025curti@hotmail.com 
+ec123456783, samueluwu88@gmail.com
+ec123456784, curti001@outlook.com 
+ec123456785, curti010@outlook.com 

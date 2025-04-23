@@ -65,7 +65,7 @@ else:
     DATA_DIR = os.path.normpath(os.path.join(os.getcwd(), data_path))
 
 ENTRADA_DIR = os.path.join(DATA_DIR, 'entrada')
-PDF_DIR = os.path.join(DATA_DIR, 'PDF')
+PDF_DIR = os.path.join(DATA_DIR, 'pdf')
 ESTADO_DIR = os.path.join(DATA_DIR, 'estado')
 ORIGEN_DIR = os.path.join(DATA_DIR, 'origen')
 
@@ -78,6 +78,7 @@ DEFAULT_FONT = {
 FONT_FILE_PATH = os.path.join(FONTS_DIR, DEFAULT_FONT['file'])
 
 # Rutas de archivos importantes
+ARCHIVO_CORREO_ORIGEN = os.path.join(ORIGEN_DIR, 'correo_origen.txt')
+ARCHIVO_DIRECCIONES = os.path.join(ORIGEN_DIR, 'direcciones.txt')
 ARCHIVO_INFO_CORREOS = os.path.join(ORIGEN_DIR, 'info_correo.txt')
-ARCHIVO_DIRECCIONES = os.path.join(ENTRADA_DIR, 'direcciones.txt')
 LOGO_EMPRESA = os.path.join(BASE_DIR, 'logo_curti.JPG')
