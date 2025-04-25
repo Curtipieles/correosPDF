@@ -102,11 +102,9 @@ class ProcesadorCorreos:
             )
             exito, detalle = enviado # Desempaquetamos la tupla
             if exito:
-                print("verdadero")
                 estado_correo = "ENVIADO"
                 detalles_error = detalle
             else:
-                print("falso")
                 estado_correo = "ERROR"
                 detalles_error = detalle
             

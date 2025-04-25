@@ -202,14 +202,30 @@ def main():
         path = sys.argv[1]
         tamano_letra = sys.argv[2]
         archivos = [i for i in os.listdir(cfg.ENTRADA_DIR) if i.endswith('.txt')] # Listamos archivos txt
-        nombre_archivo = os.path.splitext(archivos[0])[0] if archivos else None # Tomamos el primer archivo de la lista
+        
+        # Iteramos por cada archivo hasta encontrar uno con correo_destino válido
+        nombre_archivo = None
+        correo_destino = None
+        
+        for archivo in archivos:
+            nombre_archivo_temp = os.path.splitext(archivo)[0]
+            correo_destino_temp = EnviadorCorreo.obtener_correo_por_codigo(nombre_archivo_temp)
+            
+            if correo_destino_temp:
+                nombre_archivo = nombre_archivo_temp
+                correo_destino = correo_destino_temp
+                break
+        
+        # Si no encontramos ningún archivo con correo_destino, mostramos error y salimos
+        if not nombre_archivo or not correo_destino:
+            logging.error("No se encontró ningún archivo con correo destino válido.")
+            messagebox.showerror("Error", "No se encontró ningún archivo con correo destino válido.")
+            sys.exit(1)
+        
         datos_correo = ProcesadorCorreos._obtener_credenciales()
         correo_origen = datos_correo['correo']
-        correo_destino = EnviadorCorreo.obtener_correo_por_codigo(nombre_archivo)
         info = EnviadorCorreo.obtener_info_correo(cfg.ARCHIVO_INFO_CORREOS)
         asunto, cuerpo = (info.asunto, info.cuerpo) if info else ("", "")
-        if not correo_destino:
-            return False
         
         del archivos, datos_correo # Eliminamos variables q no necesitamos
         
@@ -218,7 +234,6 @@ def main():
         root.minsize(500, 400) #propiedad para establecer un tamaño minimo de la interface
         app = ventanaEmail(root, path, nombre_archivo, tamano_letra, correo_origen, correo_destino, asunto, cuerpo)
         root.mainloop()
-            
             
     except Exception as e:
         logging.error(f"Error en ejecución principal: {e}")
