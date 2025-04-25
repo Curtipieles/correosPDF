@@ -100,13 +100,15 @@ class ProcesadorCorreos:
                 pdf_path, 
                 smtp_config
             )
-            
-            if enviado:
+            exito, detalle = enviado # Desempaquetamos la tupla
+            if exito:
+                print("verdadero")
                 estado_correo = "ENVIADO"
-                detalles_error = None
+                detalles_error = detalle
             else:
+                print("falso")
                 estado_correo = "ERROR"
-                detalles_error = "Error al enviar el correo electrónico"
+                detalles_error = detalle
             
             registro_generado = EstadoCorreo.generar_estado(
                 nombre_base, 
