@@ -55,7 +55,6 @@ class EnviadorCorreo:
                     datos = linea.strip().split(',')
                     # Busca por nombre completo del archivo (antes era solo por NIT)
                     if datos[0] == codigo_archivo:
-                        print(codigo_archivo)
                         return datos[1]
             logging.warning(f"Código {codigo_archivo} no encontrado en direcciones")
             return None
