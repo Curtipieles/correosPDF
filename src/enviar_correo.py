@@ -11,7 +11,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from email.mime.image import MIMEImage
-from src.config import LOGO_EMPRESA, ARCHIVO_DIRECCIONES, ARCHIVO_INFO_CORREOS
+from src.config import ARCHIVO_DIRECCIONES, ARCHIVO_INFO_CORREOS, obtener_info_empresa, obtener_logo_por_empresa
 
 info_correo = namedtuple('info_correo', ['asunto', 'cuerpo'])
 
@@ -21,6 +21,130 @@ class EnviadorCorreo:
         self.max_intentos = 5
         self.tiempo_espera_base = 30  # segundos
         self.internet_disponible = True
+        self.info_empresa = obtener_info_empresa()
+        self.tipo_empresa = self.info_empresa['tipo_empresa']
+        self.logo_empresa = obtener_logo_por_empresa(self.tipo_empresa)
+        
+        # Configuración específica para cada tipo de empresa
+        self.config_empresa = {
+            'CUR': {
+                'color_encabezado': '#4a2511',  # Marrón para Curtipieles
+                'nombre_empresa': 'Curtipieles S.A.S',
+                'descripcion': 'Especialistas en comercialización de cueros de alta calidad',
+                'color_banner': '#f5f0e8',
+                'color_borde': '#e0d5c5',
+                'color_texto': '#5d4b35',
+                'productos': [
+                    'Cueros tratados para diferentes usos',
+                    'Pieles de diversos acabados',
+                    'Materiales para marroquinería'
+                ],
+                'beneficios': [
+                    'Atención personalizada y asesoría técnica',
+                    'Entregas puntuales y garantía en todos nuestros productos',
+                    'Variedad de acabados y texturas para diferentes necesidades'
+                ]
+            },
+            'COM': {
+                'color_encabezado': '#083D77',  # Azul para Comercueros
+                'nombre_empresa': 'Comercializadora Calle & CÍA. S. En C.S.',
+                'descripcion': 'Comercio al por mayor de materias primas agropecuarias y animales vivos',
+                'color_banner': '#e6f0f7',
+                'color_borde': '#c0d5e5',
+                'color_texto': '#355d7d',
+                'productos': [
+                    'Insumos agropecuarios de primera calidad',
+                    'Materias primas para diversos sectores',
+                    'Servicios especializados para el sector agropecuario'
+                ],
+                'beneficios': [
+                    'Gran variedad de productos nacionales e importados',
+                    'Asesoría profesional para la elección de materiales',
+                    'Precios competitivos y descuentos por volumen'
+                ]
+            },
+            'LBC': {
+                'color_encabezado': '#1E5631',  # Verde para La Bodega
+                'nombre_empresa': 'Luis Bernardo Calle Pareja',
+                'descripcion': 'Servicios especializados en cría de cerdos y relacionados',
+                'color_banner': '#e8f5ed',
+                'color_borde': '#c5e0d0',
+                'color_texto': '#355d42',
+                'productos': [
+                    'Productos para cría y cuidado de cerdos',
+                    'Insumos para producción porcícola',
+                    'Asesoría en manejo de granjas porcinas'
+                ],
+                'beneficios': [
+                    'Amplio stock disponible para entrega inmediata',
+                    'Productos seleccionados de los mejores proveedores',
+                    'Excelente relación calidad-precio'
+                ]
+            }
+        }
+        
+        # Valores por defecto en caso de no encontrar el tipo de empresa
+        config_default = {
+            'color_encabezado': '#333333',
+            'nombre_empresa': 'Empresa S.A.S',
+            'descripcion': 'Productos y servicios de calidad',
+            'color_banner': '#f5f5f5',
+            'color_borde': '#e0e0e0',
+            'color_texto': '#555555',
+            'productos': [
+                'Productos de alta calidad',
+                'Servicios especializados',
+                'Soluciones a medida'
+            ],
+            'beneficios': [
+                'Atención personalizada',
+                'Garantía en todos nuestros productos',
+                'Excelente relación calidad-precio'
+            ]
+        }
+        
+        # Obtener la configuración para la empresa actual o usar valores por defecto
+        self.config_actual = self.config_empresa.get(self.tipo_empresa, config_default)
+        
+        # Asignar valores desde la configuración
+        self.color_encabezado = self.config_actual['color_encabezado']
+        self.nombre_empresa = self.config_actual['nombre_empresa']
+        self.color_banner = self.config_actual['color_banner']
+        self.color_borde = self.config_actual['color_borde']
+        self.color_texto = self.config_actual['color_texto']
+        
+        # Obtener dirección y teléfono de la empresa
+        self.direccion = self.info_empresa.get('direccion', 'Cl. 8 #20-15, El Cerrito, Valle del Cauca, Colombia')
+        self.telefono = self.info_empresa.get('telefono', '+57 3173711707')
+
+    def _get_contenido_adicional(self):
+        """Genera contenido adicional según el tipo de empresa."""
+        productos_html = ''.join([f'<li>{producto}</li>' for producto in self.config_actual['productos']])
+        beneficios_html = ''.join([f'<li>{beneficio}</li>' for beneficio in self.config_actual['beneficios']])
+        
+        return f"""
+        <div style="color: #333333; font-size: 14px; margin-top: 30px; padding: 15px; border-top: 1px solid #e0e0e0;">
+            <h3>Información sobre nuestros productos y servicios</h3>
+            <p>En {self.nombre_empresa} nos especializamos en {self.config_actual['descripcion']}. 
+               Todos nuestros productos y servicios cumplen con altos estándares de calidad para satisfacer 
+               las necesidades de nuestros clientes más exigentes.</p>
+            
+            <h4>Nuestros principales productos:</h4>
+            <ul>
+                {productos_html}
+            </ul>
+            
+            <h4>Beneficios de trabajar con {self.nombre_empresa}:</h4>
+            <ul>
+                {beneficios_html}
+            </ul>
+            
+            <p>Agradecemos su confianza en nuestros productos y servicios. Estamos comprometidos con la 
+               excelencia y la mejora continua para ofrecerle siempre la mejor calidad.</p> 
+            <p>Si necesita más información, no dude en contactar con nuestro equipo de atención al cliente, 
+               quienes estarán encantados de resolver cualquier duda que pueda tener.</p>
+        </div>
+        """
 
     def comprobar_conexion(self):
         """Comprueba si hay conexión a internet"""
@@ -92,23 +216,7 @@ class EnviadorCorreo:
         
         # Si el texto tiene menos de 300 palabras, añadir contenido adicional
         if len(palabras) < 300:
-            contenido_adicional = """
-            <div style="color: #333333; font-size: 14px; margin-top: 30px; padding: 15px; border-top: 1px solid #e0e0e0;">
-                <h3>Información sobre nuestros productos</h3>
-                <p>En Curtipieles S.A.S nos especializamos en la producción y distribución de cueros de alta calidad para diversas aplicaciones industriales y artesanales. Todos nuestros productos pasan por rigurosos controles de calidad que aseguran su durabilidad y resistencia.</p>
-                
-                <h4>Beneficios de trabajar con Curtipieles S.A.S:</h4>
-                <ul>
-                    <li>Atención personalizada y asesoría técnica</li>
-                    <li>Entregas puntuales y garantía en todos nuestros productos</li>
-                    <li>Variedad de acabados y texturas para diferentes necesidades</li>
-                </ul>
-                
-                <p>Agradecemos su confianza en nuestros productos y servicios. Estamos comprometidos con la excelencia y la mejora continua para ofrecerle siempre la mejor calidad en cada pieza de cuero que producimos.</p> 
-                <p>Si necesita más información sobre nuestros productos o servicios, no dude en contactar con nuestro equipo de atención al cliente, quienes estarán encantados de resolver cualquier duda que pueda tener.</p>
-            </div>
-            """
-            return cuerpo + contenido_adicional
+            return cuerpo + self._get_contenido_adicional()
         return cuerpo
 
     def esperar_por_conexion(self, intento):
@@ -164,7 +272,7 @@ class EnviadorCorreo:
                 cuerpo = self._asegurar_longitud_minima(cuerpo_original)
                 
                 msg = MIMEMultipart('alternative')
-                msg['From'] = formataddr(('Curtipieles', config_correo['usuario']))
+                msg['From'] = formataddr((self.nombre_empresa, config_correo['usuario']))
                 msg['To'] = correo_destino
                 msg['Subject'] = asunto
                 
@@ -180,7 +288,7 @@ class EnviadorCorreo:
                 msg['Reply-To'] = 'no-reply+unsubscribe@' + domain
                 
                 msg['Precedence'] = 'list'
-                msg['X-Mailer'] = f"Curtipieles Sistema CorreosPDF"
+                msg['X-Mailer'] = f"{self.nombre_empresa} Sistema CorreosPDF"
                 msg['X-Priority'] = '3'  # Prioridad normal
                 msg['X-MSMail-Priority'] = 'Normal'
 
@@ -188,7 +296,10 @@ class EnviadorCorreo:
                 unsubscribe_email = 'unsubscribe@' + domain
                 msg['List-Unsubscribe'] = f"<mailto:{unsubscribe_email}?subject=unsubscribe-{codigo_archivo}>"
                 msg['List-Unsubscribe-Post'] = "List-Unsubscribe=One-Click"
-                msg['Feedback-ID'] = f"crtp:{codigo_archivo}:{time.strftime('%Y%m')}"
+                
+                # Generar Feedback-ID basado en el tipo de empresa
+                empresa_codigo = self.tipo_empresa.lower()
+                msg['Feedback-ID'] = f"{empresa_codigo}:{codigo_archivo}:{time.strftime('%Y%m')}"
                 
                 msg['X-Spam-Status'] = 'No'
                 msg['X-Spam-Score'] = '0.0'
@@ -198,7 +309,7 @@ class EnviadorCorreo:
                 # Cargar la imagen desde un archivo local
                 logo_cid = "cid:logo"
                 try:
-                    with open(LOGO_EMPRESA, 'rb') as img_file:
+                    with open(self.logo_empresa, 'rb') as img_file:
                         img_data = img_file.read()
                         image = MIMEImage(img_data)
                         image.add_header('Content-ID', '<logo>')
@@ -210,14 +321,15 @@ class EnviadorCorreo:
                 
                 # Convertir HTML a texto plano
                 texto_plano = self._limpiar_texto_html(cuerpo)
-                texto_plano += "\n\n---\nCurtipieles S.A.S agradece su confianza.\nPara darte de baja, responde a este correo con el asunto 'unsubscribe'"
+                texto_plano += f"\n\n---\n{self.nombre_empresa} agradece su confianza.\nPara darte de baja, responde a este correo con el asunto 'unsubscribe'"
                 part_text = MIMEText(texto_plano, 'plain', 'utf-8')
                 
                 # Preparar la sección del encabezado dependiendo de si tenemos logo o no
                 encabezado_html = f"""
-                <div style="background-color: #4a2511; padding: 20px; text-align: center;">
-                    {"<img src='"+logo_cid+"' alt='Logo Curtipieles' style='max-height: 60px;'>" if logo_cid else ""}
-                    <h1 style="color: #ffffff; margin: {"10px 0 0 0" if logo_cid else "0"}; font-size: {"22px" if logo_cid else "24px"};">Curtipieles S.A.S</h1>
+                <div style="background-color: {self.color_encabezado}; padding: 20px; text-align: center;">
+                    {"<img src='"+logo_cid+"' alt='Logo "+self.nombre_empresa+"' style='max-height: 60px;'>" if logo_cid else ""}
+                    <h1 style="color: #ffffff; margin: {"10px 0 0 0" if logo_cid else "0"}; font-size: {"22px" if logo_cid else "24px"};">{self.nombre_empresa}</h1>
+                    <p style="color: #ffffff; margin: 5px 0 0 0; font-size: 16px;">{self.config_actual['descripcion']}</p>
                 </div>
                 """
                 
@@ -240,10 +352,10 @@ class EnviadorCorreo:
                             {cuerpo.replace('\n', '<br>')}
                         </div>
                         
-                        <div style="background-color: #f5f0e8; padding: 20px; border-top: 1px solid #e0d5c5; border-bottom: 1px solid #e0d5c5;">
-                            <p style="font-style: italic; text-align: center; color: #5d4b35; margin: 0;">
-                                <strong>Curtipieles S.A.S</strong> agradece su confianza.<br>
-                                Nuestra misión es ofrecerle los mejores productos en cuero con compromiso y calidad.
+                        <div style="background-color: {self.color_banner}; padding: 20px; border-top: 1px solid {self.color_borde}; border-bottom: 1px solid {self.color_borde};">
+                            <p style="font-style: italic; text-align: center; color: {self.color_texto}; margin: 0;">
+                                <strong>{self.nombre_empresa}</strong> agradece su confianza.<br>
+                                Nuestra misión es ofrecerle los mejores productos y servicios con compromiso y calidad.
                             </p>
                         </div>
                         
@@ -251,14 +363,14 @@ class EnviadorCorreo:
                             <div>
                                 <div style="font-size: 12px; color: #777;">
                                     <p style="margin-top: 0;">
-                                        © 2025 Curtipieles S.A.S. Todos los derechos reservados.<br>
-                                        Dirección: Cl. 8 #20-15, El Cerrito, Valle del Cauca, Colombia<br>
-                                        Teléfono: +57 3173711707
+                                        © {time.strftime('%Y')} {self.nombre_empresa}. Todos los derechos reservados.<br>
+                                        Dirección: {self.direccion}<br>
+                                        Teléfono: {self.telefono}
                                     </p>
                                 </div>
                             </div>
                             <div style="font-size:10px; color:#999; text-align:center; margin-top:20px; border-top:1px solid #eee; padding-top:15px;">
-                                Este mensaje se envía a su dirección de correo electrónico porque es cliente de Curtipieles S.A.S.
+                                Este mensaje se envía a su dirección de correo electrónico porque es cliente de {self.nombre_empresa}.
                                 <br>Si no desea recibir más comunicaciones, por favor 
                                 <a href="mailto:{unsubscribe_email}?subject=UNSUBSCRIBE-{codigo_archivo}" style="color:#999; text-decoration:underline;">haga clic aquí</a>.
                             </div>
@@ -283,7 +395,7 @@ class EnviadorCorreo:
                     )
                     part.add_header('Content-Disposition', 'attachment', filename=nombre_pdf)
                     part.add_header('Content-Type', 'application/pdf')
-                    part.add_header('Content-Description', f'Documento oficial Curtipieles para cliente {codigo_archivo}')
+                    part.add_header('Content-Description', f'Documento oficial {self.nombre_empresa} para cliente {codigo_archivo}')
                     part.add_header('Content-Transfer-Encoding', 'base64')
                     part.add_header('X-Attachment-Id', f'doc_{time.strftime("%Y%m%d%H%M%S")}')
                     msg.attach(part)
