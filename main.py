@@ -20,7 +20,9 @@ class ProcesadorCorreos:
         self.entrada_dir = cfg.ENTRADA_DIR
         self.info_empresa = self._obtener_info_empresa()
         print(self.info_empresa)
-        self.archivos_ya_enviados = self._obtener_archivos_ya_enviados() if estado_proceso == '1' else []
+        # Si estamos en modo de reenvío (1), obtenemos los archivos pendientes
+        # Si estamos en modo nuevo proceso (0), lista vacía
+        self.archivos_pendientes = self._obtener_archivos_pendientes() if estado_proceso == '1' else []
 
     def _obtener_info_empresa(self):
         """Obtiene información de la empresa del archivo empresa.txt"""
@@ -29,37 +31,58 @@ class ProcesadorCorreos:
             logging.error("No se pudo obtener información de empresa.txt")
             return None
         return info_empresa
-            
-    def _obtener_archivos_ya_enviados(self):
+    
+    def actualizar_estado_envio(self, codigo_archivo):
+        """Actualiza el estado de envío a 0 (enviado) para el código especificado."""
         try:
-            archivos_enviados = []
-            if not os.path.exists(cfg.ARCHIVO_ESTADO):
-                logging.warning("No existe archivo de estado previo. Se procesarán todos los archivos.")
+            with open(cfg.ARCHIVO_DIRECCIONES, 'r') as file:
+                lineas = file.readlines()
+            
+            with open(cfg.ARCHIVO_DIRECCIONES, 'w') as file:
+                for linea in lineas:
+                    datos = linea.strip().split(',')
+                    if len(datos) >= 3 and datos[1] == codigo_archivo:
+                        # Actualizar estado a 0 (enviado)
+                        file.write(f"0,{datos[1]},{datos[2]}\n")
+                        logging.info(f"Estado de envío actualizado a 0 para {codigo_archivo}")
+                    else:
+                        file.write(linea)
+            
+            return True
+        except Exception as e:
+            logging.error(f"Error actualizando estado de envío para {codigo_archivo}: {e}")
+            return False
+            
+    def _obtener_archivos_pendientes(self):
+        """Obtiene la lista de archivos pendientes de envío (estado 1) de la libreta de direcciones."""
+        try:
+            archivos_pendientes = []
+            
+            if not os.path.exists(cfg.ARCHIVO_DIRECCIONES):
+                logging.warning("No existe el archivo de direcciones. No se pueden determinar archivos pendientes.")
                 return []
                 
-            with open(cfg.ARCHIVO_ESTADO, 'r', encoding='utf-8') as f:
-                lineas = f.readlines()
-                # Saltar las dos primeras líneas (encabezado y separador)
-                for i in range(2, len(lineas)):
-                    linea = lineas[i].strip()
+            with open(cfg.ARCHIVO_DIRECCIONES, 'r', encoding='utf-8') as f:
+                for linea in f:
+                    linea = linea.strip()
                     if not linea:
                         continue
                         
-                    # El formato es "ARCHIVO || FECHA ENVÍO || ESTADO || DIAGNÓSTICO"
-                    partes = linea.split('||')
+                    # El formato es "ESTADO,CODIGO,CORREO"
+                    partes = linea.split(',')
                     if len(partes) >= 3:
-                        archivo = partes[0].strip()
-                        estado = partes[2].strip()
+                        estado = partes[0].strip()
+                        codigo = partes[1].strip()
                         
-                        # Solo agregar a la lista si fue enviado exitosamente
-                        if estado == "ENVIADO":
-                            archivos_enviados.append(archivo)
+                        # Solo agregar a la lista si está pendiente (estado = 1)
+                        if estado == "1":
+                            archivos_pendientes.append(codigo)
             
-            logging.info(f"Se encontraron {len(archivos_enviados)} archivos ya enviados previamente")
-            return archivos_enviados
-            
+            logging.info(f"Se encontraron {len(archivos_pendientes)} archivos pendientes por enviar")
+            return archivos_pendientes
+                
         except Exception as e:
-            logging.error(f"Error al obtener archivos ya enviados: {e}")
+            logging.error(f"Error al obtener archivos pendientes: {e}")
             return []
             
     def procesar_archivo(self, nombre_archivo):
@@ -70,10 +93,10 @@ class ProcesadorCorreos:
                 
             nombre_base = os.path.splitext(nombre_archivo)[0]  # Obtiene el nombre sin extensión
             
-            # Verificar si este archivo ya fue enviado (solo en modo reenvío)
-            if self.estado_proceso == '1' and nombre_base in self.archivos_ya_enviados:
-                logging.info(f"Omitiendo archivo ya enviado: {nombre_archivo}")
-                return True  # Considerar como éxito ya que fue procesado anteriormente
+            # Verificar si este archivo NO está en la lista de pendientes (solo en modo reenvío)
+            if self.estado_proceso == '1' and nombre_base not in self.archivos_pendientes:
+                logging.info(f"Omitiendo archivo que no está pendiente: {nombre_archivo}")
+                return True  # Considerar como éxito ya que no está en la lista de pendientes
                 
             logging.info(f"Procesando archivo: {nombre_archivo}")
             
@@ -113,7 +136,11 @@ class ProcesadorCorreos:
             else:
                 estado_correo = "ERROR"
                 detalles_error = detalle
-            
+            estado_archivo = self.actualizar_estado_envio(nombre_base)
+            if estado_archivo:
+                logging.warning(f"Se cambio el estado a '0' en la libreta de direcciones para: {nombre_base}")
+            else:
+                logging.warning(f"No se pudo cambiar el estado a '0' en la libreta de direcciones para: {nombre_base}")
             registro_generado = EstadoCorreo.generar_estado(
                 nombre_base, 
                 estado_correo, 
@@ -150,19 +177,19 @@ class ProcesadorCorreos:
             total_archivos = len(archivos)
             logging.info(f"Se encontraron {total_archivos} archivos para procesar")
             
-            # Si estamos en modo reenvío, filtrar los archivos que ya fueron enviados
-            if self.estado_proceso == '1' and self.archivos_ya_enviados:
+            # Si estamos en modo reenvío, filtrar solo los archivos pendientes
+            if self.estado_proceso == '1' and self.archivos_pendientes:
                 archivos_a_procesar = []
                 for archivo in archivos:
                     nombre_base = os.path.splitext(archivo)[0]
-                    if nombre_base not in self.archivos_ya_enviados:
+                    if nombre_base in self.archivos_pendientes:
                         archivos_a_procesar.append(archivo)
                         
                 archivos = archivos_a_procesar
-                logging.info(f"Después de filtrar archivos ya enviados, quedan {len(archivos)} por procesar")
+                logging.info(f"Después de filtrar, hay {len(archivos)} archivos pendientes por procesar")
                 
                 if not archivos:
-                    logging.info("Todos los archivos ya fueron enviados previamente")
+                    logging.info("No hay archivos pendientes para procesar")
                     return True
             
             CORREOS_ANTES_DESCANSO = 30

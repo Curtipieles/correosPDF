@@ -177,9 +177,9 @@ class EnviadorCorreo:
             with open(ARCHIVO_DIRECCIONES, 'r') as file:
                 for linea in file:
                     datos = linea.strip().split(',')
-                    # Busca por nombre completo del archivo (antes era solo por NIT)
-                    if datos[0] == codigo_archivo:
-                        return datos[1]
+                    # Nueva estructura: estado,codigo,correo
+                    if len(datos) >= 3 and datos[1] == codigo_archivo:
+                        return datos[2]
             logging.warning(f"Código {codigo_archivo} no encontrado en direcciones")
             return None
         except FileNotFoundError:
