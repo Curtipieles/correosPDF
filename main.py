@@ -20,8 +20,6 @@ class ProcesadorCorreos:
         self.entrada_dir = cfg.ENTRADA_DIR
         self.info_empresa = self._obtener_info_empresa()
         print(self.info_empresa)
-        # Si estamos en modo de reenvío (1), obtenemos los archivos pendientes
-        # Si estamos en modo nuevo proceso (0), lista vacía
         self.archivos_pendientes = self._obtener_archivos_pendientes() if estado_proceso == '1' else []
 
     def _obtener_info_empresa(self):
@@ -84,7 +82,7 @@ class ProcesadorCorreos:
         except Exception as e:
             logging.error(f"Error al obtener archivos pendientes: {e}")
             return []
-            
+    
     def procesar_archivo(self, nombre_archivo):
         try:
             if not self.info_empresa:

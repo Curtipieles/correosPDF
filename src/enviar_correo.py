@@ -49,8 +49,8 @@ class EnviadorCorreo:
                 'color_encabezado': '#083D77',  # Azul para Comercueros
                 'nombre_empresa': 'Comercializadora Calle & CÍA. S. En C.S.',
                 'descripcion': 'Comercio al por mayor de materias primas agropecuarias y animales vivos',
-                'color_banner': '#e6f0f7',
-                'color_borde': '#c0d5e5',
+                'color_banner': '#639DAE',
+                'color_borde': '#E8E2D6',
                 'color_texto': '#355d7d',
                 'productos': [
                     'Insumos agropecuarios de primera calidad',
@@ -67,8 +67,8 @@ class EnviadorCorreo:
                 'color_encabezado': '#1E5631',  # Verde para La Bodega
                 'nombre_empresa': 'Luis Bernardo Calle Pareja',
                 'descripcion': 'Servicios especializados en cría de cerdos y relacionados',
-                'color_banner': '#e8f5ed',
-                'color_borde': '#c5e0d0',
+                'color_banner': '#87B750',
+                'color_borde': '#ECC7BB',
                 'color_texto': '#355d42',
                 'productos': [
                     'Productos para cría y cuidado de cerdos',
