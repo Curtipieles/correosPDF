@@ -176,7 +176,7 @@ class ProcesadorCorreos:
             logging.info(f"Se encontraron {total_archivos} archivos para procesar")
             
             # Si estamos en modo reenvío, filtrar solo los archivos pendientes
-            if self.estado_proceso == '1' and self.archivos_pendientes:
+            if self.estado_proceso == '1':
                 archivos_a_procesar = []
                 for archivo in archivos:
                     nombre_base = os.path.splitext(archivo)[0]
