@@ -7,147 +7,88 @@ import re
 import socket
 import requests
 import threading
+import random
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
-from email.mime.image import MIMEImage
-from src.config import ARCHIVO_DIRECCIONES, ARCHIVO_INFO_CORREOS, obtener_info_empresa, obtener_logo_por_empresa
+from src.config import ARCHIVO_DIRECCIONES, ARCHIVO_INFO_CORREOS, obtener_info_empresa
 
 info_correo = namedtuple('info_correo', ['asunto', 'cuerpo'])
 
 class EnviadorCorreo:
     def __init__(self):
-        # Configurar parámetros de reintento
         self.max_intentos = 5
         self.tiempo_espera_base = 30  # segundos
         self.internet_disponible = True
         self.info_empresa = obtener_info_empresa()
         self.tipo_empresa = self.info_empresa['tipo_empresa']
-        self.logo_empresa = obtener_logo_por_empresa(self.tipo_empresa)
-        
-        # Configuración específica para cada tipo de empresa
         self.config_empresa = {
             'CUR': {
                 'color_encabezado': '#4a2511',  # Marrón para Curtipieles
                 'nombre_empresa': 'Curtipieles S.A.S',
-                'descripcion': 'Especialistas en comercialización de cueros de alta calidad',
                 'color_banner': '#f5f0e8',
                 'color_borde': '#e0d5c5',
-                'color_texto': '#5d4b35',
-                'productos': [
-                    'Cueros tratados para diferentes usos',
-                    'Pieles de diversos acabados',
-                    'Materiales para marroquinería'
-                ],
-                'beneficios': [
-                    'Atención personalizada y asesoría técnica',
-                    'Entregas puntuales y garantía en todos nuestros productos',
-                    'Variedad de acabados y texturas para diferentes necesidades'
-                ]
+                'color_texto': '#5d4b35'
             },
             'COM': {
-                'color_encabezado': '#083D77',  # Azul para Comercueros
+                'color_encabezado': '#083D77',
                 'nombre_empresa': 'Comercializadora Calle & CÍA. S. En C.S.',
-                'descripcion': 'Comercio al por mayor de materias primas agropecuarias y animales vivos',
                 'color_banner': '#639DAE',
                 'color_borde': '#E8E2D6',
-                'color_texto': '#355d7d',
-                'productos': [
-                    'Insumos agropecuarios de primera calidad',
-                    'Materias primas para diversos sectores',
-                    'Servicios especializados para el sector agropecuario'
-                ],
-                'beneficios': [
-                    'Gran variedad de productos nacionales e importados',
-                    'Asesoría profesional para la elección de materiales',
-                    'Precios competitivos y descuentos por volumen'
-                ]
+                'color_texto': '#355d7d'
             },
             'LBC': {
-                'color_encabezado': '#1E5631',  # Verde para La Bodega
+                'color_encabezado': '#1E5631',
                 'nombre_empresa': 'Luis Bernardo Calle Pareja',
-                'descripcion': 'Servicios especializados en cría de cerdos y relacionados',
-                'color_banner': '#87B750',
-                'color_borde': '#ECC7BB',
-                'color_texto': '#355d42',
-                'productos': [
-                    'Productos para cría y cuidado de cerdos',
-                    'Insumos para producción porcícola',
-                    'Asesoría en manejo de granjas porcinas'
-                ],
-                'beneficios': [
-                    'Amplio stock disponible para entrega inmediata',
-                    'Productos seleccionados de los mejores proveedores',
-                    'Excelente relación calidad-precio'
-                ]
+                'color_banner': '#537D5D',
+                'color_borde': '#D2D0A0',
+                'color_texto': '#355d42'
             }
         }
-        
-        # Valores por defecto en caso de no encontrar el tipo de empresa
         config_default = {
             'color_encabezado': '#333333',
             'nombre_empresa': 'Empresa S.A.S',
             'descripcion': 'Productos y servicios de calidad',
             'color_banner': '#f5f5f5',
             'color_borde': '#e0e0e0',
-            'color_texto': '#555555',
-            'productos': [
-                'Productos de alta calidad',
-                'Servicios especializados',
-                'Soluciones a medida'
-            ],
-            'beneficios': [
-                'Atención personalizada',
-                'Garantía en todos nuestros productos',
-                'Excelente relación calidad-precio'
-            ]
+            'color_texto': '#555555'
         }
-        
-        # Obtener la configuración para la empresa actual o usar valores por defecto
         self.config_actual = self.config_empresa.get(self.tipo_empresa, config_default)
-        
-        # Asignar valores desde la configuración
         self.color_encabezado = self.config_actual['color_encabezado']
         self.nombre_empresa = self.config_actual['nombre_empresa']
         self.color_banner = self.config_actual['color_banner']
         self.color_borde = self.config_actual['color_borde']
         self.color_texto = self.config_actual['color_texto']
-        
-        # Obtener dirección y teléfono de la empresa
-        self.direccion = self.info_empresa.get('direccion', 'Cl. 8 #20-15, El Cerrito, Valle del Cauca, Colombia')
-        self.telefono = self.info_empresa.get('telefono', '+57 3173711707')
-
-    def _get_contenido_adicional(self):
-        """Genera contenido adicional según el tipo de empresa."""
-        productos_html = ''.join([f'<li>{producto}</li>' for producto in self.config_actual['productos']])
-        beneficios_html = ''.join([f'<li>{beneficio}</li>' for beneficio in self.config_actual['beneficios']])
-        
-        return f"""
-        <div style="color: #333333; font-size: 14px; margin-top: 30px; padding: 15px; border-top: 1px solid #e0e0e0;">
-            <h3>Información sobre nuestros productos y servicios</h3>
-            <p>En {self.nombre_empresa} nos especializamos en {self.config_actual['descripcion']}. 
-               Todos nuestros productos y servicios cumplen con altos estándares de calidad para satisfacer 
-               las necesidades de nuestros clientes más exigentes.</p>
-            
-            <h4>Nuestros principales productos:</h4>
-            <ul>
-                {productos_html}
-            </ul>
-            
-            <h4>Beneficios de trabajar con {self.nombre_empresa}:</h4>
-            <ul>
-                {beneficios_html}
-            </ul>
-            
-            <p>Agradecemos su confianza en nuestros productos y servicios. Estamos comprometidos con la 
-               excelencia y la mejora continua para ofrecerle siempre la mejor calidad.</p> 
-            <p>Si necesita más información, no dude en contactar con nuestro equipo de atención al cliente, 
-               quienes estarán encantados de resolver cualquier duda que pueda tener.</p>
-        </div>
-        """
+        self.direccion = self.info_empresa.get('pie_pagina1', 'Cl. 8 #20-15, El Cerrito, Valle del Cauca, Colombia')
+        self.telefono = self.info_empresa.get('pie_pagina2', '+57 3173711707')
+        self.correo = self.info_empresa.get('pie_pagina3', 'No es posible acceder al servicio de correo en este instante. ' \
+        'Le invitamos a intentarlo más tarde o utilizar canales alternativos de contacto.')
+        self.frases_cierre = [
+            "Gracias por su confianza.",
+            "Estamos aquí para resolver cualquier consulta adicional.",
+            "Valoramos su confianza.",
+            "Estamos encantados de poder ayudarle.",
+            "Nuestro objetivo es ofrecerle el mejor servicio.",
+            "Trabajamos para mejorar constantemente.",
+            "Su satisfacción es importante para nosotros.",
+            "Gracias por confiar en nosotros.",
+            "Todo nuestro equipo agradece su preferencia.",
+            "Continuamos a su disposición para cualquier consulta.",
+            "Gracias por la oportunidad de servirle.",
+            "Estamos comprometidos con su satisfacción.",
+            "La calidad es nuestra prioridad diaria.",
+            "Apreciamos su confianza.",
+            "Gracias por ser parte de nuestra clientela.",
+            "Estamos a su servicio.",
+            "Cada cliente es importante para nosotros.",
+            "Su confianza nos motiva a mejorar.",
+            "Gracias por su tiempo.",
+            "Agradecemos su preferencia.",
+            "Gracias por elegirnos.",
+            "Siempre a su disposición."
+        ]
 
     def comprobar_conexion(self):
-        """Comprueba si hay conexión a internet"""
         try:
             # Intenta conectarse a Google DNS para verificar conexión
             socket.create_connection(("8.8.8.8", 53), timeout=3)
@@ -160,7 +101,6 @@ class EnviadorCorreo:
             return False
 
     def iniciar_monitor_conexion(self):
-        """Inicia un hilo para monitorear la conexión a internet"""
         def monitor():
             while True:
                 self.comprobar_conexion()
@@ -172,12 +112,10 @@ class EnviadorCorreo:
 
     @staticmethod
     def obtener_correo_por_codigo(codigo_archivo):
-        """Obtiene el correo destino según el código de archivo."""
         try:
             with open(ARCHIVO_DIRECCIONES, 'r') as file:
                 for linea in file:
                     datos = linea.strip().split(',')
-                    # Nueva estructura: estado,codigo,correo
                     if len(datos) >= 3 and datos[1] == codigo_archivo:
                         return datos[2]
             logging.warning(f"Código {codigo_archivo} no encontrado en direcciones")
@@ -189,7 +127,6 @@ class EnviadorCorreo:
         return None
     
     def obtener_info_correo(self):
-        """Obtiene la información de asunto y cuerpo del correo."""
         try:
             with open(ARCHIVO_INFO_CORREOS, 'r', encoding='utf-8') as file:
                 lineas = file.readlines()
@@ -209,24 +146,15 @@ class EnviadorCorreo:
         """Elimina etiquetas HTML para obtener texto plano."""
         return re.sub(r'<[^>]*>', '', texto)
     
-    def _asegurar_longitud_minima(self, cuerpo):
-        """Asegura que el cuerpo del correo tenga suficiente texto (al menos 300 palabras)."""
-        texto_plano = self._limpiar_texto_html(cuerpo)
-        palabras = texto_plano.split()
-        
-        # Si el texto tiene menos de 300 palabras, añadir contenido adicional
-        if len(palabras) < 300:
-            return cuerpo + self._get_contenido_adicional()
-        return cuerpo
+    def _obtener_frase_aleatoria(self):
+        return random.choice(self.frases_cierre)
 
     def esperar_por_conexion(self, intento):
-        """Espera un tiempo antes de reintentar, usando backoff exponencial"""
         tiempo_espera = self.tiempo_espera_base * (2 ** (intento - 1))  # Backoff exponencial
         tiempo_espera = min(tiempo_espera, 300)  # Máximo 5 minutos
         
         logging.info(f"Esperando {tiempo_espera} segundos antes de reintentar (intento {intento}/{self.max_intentos})...")
         
-        # Esperar con comprobaciones periódicas
         tiempo_inicio = time.time()
         while time.time() - tiempo_inicio < tiempo_espera:
             if self.comprobar_conexion():
@@ -237,11 +165,9 @@ class EnviadorCorreo:
         return self.comprobar_conexion()  # Comprobar una vez más antes de continuar
 
     def enviar_correo_gmail(self, codigo_archivo, pdf_path, config_correo):
-        """Envía un correo con el PDF adjunto usando Gmail."""
         detalles_error = None
         intento = 0
         
-        # Iniciar monitor de conexión en segundo plano
         self.iniciar_monitor_conexion()
         
         while intento < self.max_intentos:
@@ -266,10 +192,8 @@ class EnviadorCorreo:
                     logging.error(detalles_error)
                     return False, detalles_error
                     
-                asunto, cuerpo_original = info.asunto, info.cuerpo
-                
-                # Asegurar que el correo tiene suficiente texto para mejorar ratio imagen/texto
-                cuerpo = self._asegurar_longitud_minima(cuerpo_original)
+                asunto, cuerpo = info.asunto, info.cuerpo
+                frase_aleatoria = self._obtener_frase_aleatoria()
                 
                 msg = MIMEMultipart('alternative')
                 msg['From'] = formataddr((self.nombre_empresa, config_correo['usuario']))
@@ -279,19 +203,24 @@ class EnviadorCorreo:
                 # Usar un Message-ID conforme a RFC 5322 con el dominio real del remitente
                 domain = config_correo['usuario'].split('@')[1]
                 msg['Message-ID'] = make_msgid(domain=domain)
+                
+                # Cabeceras Anti-Spam añadidas del segundo código
                 msg['X-Authentication-Warning'] = f"{domain} sender verified"
-                
-                # Fecha correo
-                msg['Date'] = formatdate(localtime=True)
-                tiempo_colombia = time.time() - (5 * 3600) # Restamos 5 horas en segundos
-                msg['Date'] = formatdate(tiempo_colombia, localtime=False)
-                msg['Reply-To'] = 'no-reply+unsubscribe@' + domain
-                
                 msg['Precedence'] = 'list'
                 msg['X-Mailer'] = f"{self.nombre_empresa} Sistema CorreosPDF"
                 msg['X-Priority'] = '3'  # Prioridad normal
                 msg['X-MSMail-Priority'] = 'Normal'
-
+                msg['X-Spam-Status'] = 'No'
+                msg['X-Spam-Score'] = '0.0'
+                msg['X-Spam-Level'] = ''
+                msg['X-Spam-Flag'] = 'NO'
+                
+                # SOLUCIÓN: Usar formatdate sin ajustes manuales
+                msg['Date'] = formatdate(localtime=False)
+                
+                # SOLUCIÓN: Usar el mismo correo de From para Reply-To
+                msg['Reply-To'] = config_correo['usuario']
+                
                 # Configuración de desuscripción según RFC 8058
                 unsubscribe_email = 'unsubscribe@' + domain
                 msg['List-Unsubscribe'] = f"<mailto:{unsubscribe_email}?subject=unsubscribe-{codigo_archivo}>"
@@ -301,39 +230,19 @@ class EnviadorCorreo:
                 empresa_codigo = self.tipo_empresa.lower()
                 msg['Feedback-ID'] = f"{empresa_codigo}:{codigo_archivo}:{time.strftime('%Y%m')}"
                 
-                msg['X-Spam-Status'] = 'No'
-                msg['X-Spam-Score'] = '0.0'
-                msg['X-Spam-Level'] = ''
-                msg['X-Spam-Flag'] = 'NO'
-                
-                # Cargar la imagen desde un archivo local
-                logo_cid = "cid:logo"
-                try:
-                    with open(self.logo_empresa, 'rb') as img_file:
-                        img_data = img_file.read()
-                        image = MIMEImage(img_data)
-                        image.add_header('Content-ID', '<logo>')
-                        image.add_header('Content-Disposition', 'inline')
-                        msg.attach(image)
-                except Exception as e:
-                    logging.error(f"No se pudo cargar la imagen del logo: {e}")
-                    logo_cid = ""
-                
-                # Convertir HTML a texto plano
-                texto_plano = self._limpiar_texto_html(cuerpo)
-                texto_plano += f"\n\n---\n{self.nombre_empresa} agradece su confianza.\nPara darte de baja, responde a este correo con el asunto 'unsubscribe'"
-                part_text = MIMEText(texto_plano, 'plain', 'utf-8')
-                
-                # Preparar la sección del encabezado dependiendo de si tenemos logo o no
+                # Preparar la sección del encabezado sin logo
                 encabezado_html = f"""
-                <div style="background-color: {self.color_encabezado}; padding: 20px; text-align: center;">
-                    {"<img src='"+logo_cid+"' alt='Logo "+self.nombre_empresa+"' style='max-height: 60px;'>" if logo_cid else ""}
-                    <h1 style="color: #ffffff; margin: {"10px 0 0 0" if logo_cid else "0"}; font-size: {"22px" if logo_cid else "24px"};">{self.nombre_empresa}</h1>
-                    <p style="color: #ffffff; margin: 5px 0 0 0; font-size: 16px;">{self.config_actual['descripcion']}</p>
+                <div style="background-color: {self.color_encabezado}; padding: 15px; text-align: center;">
+                    <h1 style="color: #ffffff; margin: 0; font-size: 22px;">{self.nombre_empresa}</h1>
                 </div>
                 """
                 
-                # Versión HTML con mejor estructura
+                # Convertir HTML a texto plano con la frase aleatoria
+                texto_plano = self._limpiar_texto_html(cuerpo)
+                texto_plano += f"\n\n{frase_aleatoria}\n\n---\n{self.nombre_empresa}\nDirección: {self.direccion}\nTeléfono: {self.telefono}\n\nPara darse de baja, responda a este correo con el asunto 'unsubscribe'"
+                part_text = MIMEText(texto_plano, 'plain', 'utf-8')
+                
+                # Versión HTML simplificada pero manteniendo el estilo consistente
                 html_cuerpo = f"""
                 <!DOCTYPE html>
                 <html lang="es">
@@ -341,38 +250,42 @@ class EnviadorCorreo:
                     <meta charset="UTF-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <title>{asunto}</title>
+                    <style>
+                        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; }}
+                        .container {{ max-width: 600px; margin: 0 auto; background-color: #ffffff; }}
+                        .header {{ background-color: {self.color_encabezado}; padding: 15px; text-align: center; }}
+                        .content {{ padding: 20px 15px; }}
+                        .signature {{ font-style: italic; margin-top: 15px; color: #666666; }}
+                        .footer {{ padding: 15px; background-color: {self.color_banner}; border-top: 1px solid {self.color_borde}; }}
+                        .contact {{ font-size: 13px; color: {self.color_texto}; margin-top: 10px; }}
+                        .unsubscribe {{ font-size: 11px; color: #777777; margin-top: 10px; }}
+                    </style>
                 </head>
-                <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9f9f9; margin: 0; padding: 0;">
-                    <div style="max-width: 650px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); overflow: hidden;">
-                        <!-- Encabezado -->
-                        {encabezado_html}
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 22px;">{self.nombre_empresa}</h1>
+                        </div>
                         
-                        <!-- Contenido principal -->
-                        <div style="padding: 30px 25px;">
+                        <div class="content">
                             {cuerpo.replace('\n', '<br>')}
+                            <p class="signature">{frase_aleatoria}</p>
                         </div>
                         
-                        <div style="background-color: {self.color_banner}; padding: 20px; border-top: 1px solid {self.color_borde}; border-bottom: 1px solid {self.color_borde};">
-                            <p style="font-style: italic; text-align: center; color: {self.color_texto}; margin: 0;">
-                                <strong>{self.nombre_empresa}</strong> agradece su confianza.<br>
-                                Nuestra misión es ofrecerle los mejores productos y servicios con compromiso y calidad.
+                        <div class="footer">
+                            <p style="margin: 0; color: {self.color_texto};">
+                                <strong>{self.nombre_empresa}</strong>
                             </p>
-                        </div>
-                        
-                        <div style="padding: 20px 25px; background-color: #f9f9f9;">
-                            <div>
-                                <div style="font-size: 12px; color: #777;">
-                                    <p style="margin-top: 0;">
-                                        © {time.strftime('%Y')} {self.nombre_empresa}. Todos los derechos reservados.<br>
-                                        Dirección: {self.direccion}<br>
-                                        Teléfono: {self.telefono}
-                                    </p>
-                                </div>
+                            <div class="contact">
+                                <p style="margin: 5px 0;">
+                                    Dirección: {self.direccion}<br>
+                                    Teléfono: {self.telefono}
+                                </p>
                             </div>
-                            <div style="font-size:10px; color:#999; text-align:center; margin-top:20px; border-top:1px solid #eee; padding-top:15px;">
-                                Este mensaje se envía a su dirección de correo electrónico porque es cliente de {self.nombre_empresa}.
-                                <br>Si no desea recibir más comunicaciones, por favor 
-                                <a href="mailto:{unsubscribe_email}?subject=UNSUBSCRIBE-{codigo_archivo}" style="color:#999; text-decoration:underline;">haga clic aquí</a>.
+                            <div class="unsubscribe" style="font-size: 11px; color: #777777; margin-top: 10px;">
+                                <p>Si no desea recibir más comunicaciones, puede 
+                                <a href="mailto:{unsubscribe_email}?subject=unsubscribe-{codigo_archivo}" style="color:#555555;">
+                                darse de baja aquí</a>.</p>
                             </div>
                         </div>
                     </div>
@@ -381,12 +294,10 @@ class EnviadorCorreo:
                 """
                 part_html = MIMEText(html_cuerpo, 'html', 'utf-8')
                 
-                # Añadir las partes en el orden correcto (primero texto, luego HTML)
                 msg.attach(part_text)
                 msg.attach(part_html)
 
-                # Adjuntar el PDF con un nombre más específico y profesional
-                nombre_pdf = f"Doc_Oficial_{codigo_archivo}.pdf"
+                nombre_pdf = f"Doc_{codigo_archivo}.pdf"
                 with open(pdf_path, 'rb') as pdf_file:
                     part = MIMEApplication(
                         pdf_file.read(),
@@ -400,7 +311,6 @@ class EnviadorCorreo:
                     part.add_header('X-Attachment-Id', f'doc_{time.strftime("%Y%m%d%H%M%S")}')
                     msg.attach(part)
 
-                # Enviar el correo con mejor manejo de errores
                 try:
                     with smtplib.SMTP(config_correo['server'], config_correo['port'], timeout=20) as server:
                         server.starttls()
@@ -462,7 +372,6 @@ class EnviadorCorreo:
                     if not self.esperar_por_conexion(intento):
                         continue
             
-            # Si llegamos aquí y no es el último intento, reintentamos
             if intento < self.max_intentos:
                 logging.info(f"Reintentando envío para {codigo_archivo} (intento {intento+1}/{self.max_intentos})...")
             else:
