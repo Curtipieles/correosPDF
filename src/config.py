@@ -102,9 +102,9 @@ def obtener_info_empresa():
             'correo_origen': lineas[0].strip(),
             'app_pw': lineas[1].strip(),
             'tipo_empresa': lineas[2].strip().upper(),
-            'pie_pagina1': lineas[3].strip(),
-            'pie_pagina2': lineas[4].strip(),
-            'pie_pagina3': lineas[5].strip(),
+            'pie_pagina1': lineas[3].strip(), # Direccion
+            'pie_pagina2': lineas[4].strip(), # Telefono
+            'pie_pagina3': lineas[5].strip(), # Email
             'estado_proceso': lineas[6].strip()
         }
     except Exception as e:
