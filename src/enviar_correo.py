@@ -215,11 +215,9 @@ class EnviadorCorreo:
                 msg['X-Spam-Level'] = ''
                 msg['X-Spam-Flag'] = 'NO'
                 
-                # SOLUCIÓN: Usar formatdate sin ajustes manuales
                 msg['Date'] = formatdate(localtime=False)
                 
-                # SOLUCIÓN: Usar el mismo correo de From para Reply-To
-                msg['Reply-To'] = config_correo['usuario']
+                msg['Reply-To'] = correo_destino
                 
                 # Configuración de desuscripción según RFC 8058
                 unsubscribe_email = 'unsubscribe@' + domain
