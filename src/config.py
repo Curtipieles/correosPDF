@@ -3,11 +3,6 @@ import sys
 import logging
 import smtplib
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-
 def validar_servidor_smtp(servidor, puerto, timeout=5):
     try:
         with smtplib.SMTP(servidor, puerto, timeout=timeout) as smtp:
