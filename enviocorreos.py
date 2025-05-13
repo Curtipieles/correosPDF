@@ -170,12 +170,13 @@ class ProcesadorCorreos:
             
             if not archivos:
                 logging.info("No hay archivos para procesar")
+                cfg.actualizar_estado_proceso('0')
+                logging.info("Proceso completado. Estado actualizado a 0.")
                 return True
                 
             total_archivos = len(archivos)
             logging.info(f"Se encontraron {total_archivos} archivos para procesar")
             
-            # Si estamos en modo reenvío, filtrar solo los archivos pendientes
             if self.estado_proceso == '1':
                 archivos_a_procesar = []
                 for archivo in archivos:
@@ -188,6 +189,8 @@ class ProcesadorCorreos:
                 
                 if not archivos:
                     logging.info("No hay archivos pendientes para procesar")
+                    cfg.actualizar_estado_proceso('0')
+                    logging.info("Proceso completado. Estado actualizado a 0.")
                     return True
             
             CORREOS_ANTES_DESCANSO = 30
@@ -207,7 +210,6 @@ class ProcesadorCorreos:
                     logging.info(f"Esperando {intervalo_aleatorio} segundos antes del siguiente envío...")
                     time.sleep(intervalo_aleatorio)
             
-            # Al finalizar todos los envíos, actualizar el estado del proceso a 0
             cfg.actualizar_estado_proceso('0')
             logging.info("Proceso completado. Estado actualizado a 0.")
                     
