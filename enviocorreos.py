@@ -10,7 +10,7 @@ import src.config as cfg
 
 # Configuración de logging
 logging.getLogger('fontTools').setLevel(logging.WARNING)
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler()])
+logging.basicConfig(level=logging.CRITICAL, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler()])
 
 class ProcesadorCorreos:
     def __init__(self, ruta_usuario, tamano_letra, estado_proceso):
@@ -19,7 +19,6 @@ class ProcesadorCorreos:
         self.estado_proceso = estado_proceso
         self.entrada_dir = cfg.ENTRADA_DIR
         self.info_empresa = self._obtener_info_empresa()
-        print(self.info_empresa)
         self.archivos_pendientes = self._obtener_archivos_pendientes() if estado_proceso == '1' else []
 
     def _obtener_info_empresa(self):
