@@ -75,7 +75,6 @@ class EstadoCorreo:
     def generar_estado(codigo_archivo, estado="ERROR", detalles_error=None, pdf_path=None, correo_origen=None):
         """Genera archivos de estado para el procesamiento de correos."""
         try:
-            print(f"CODIGO ARCHIVO: {codigo_archivo}, ESTADO: {estado}, DETALLES: {detalles_error}, PDF: {pdf_path}, CORREO ORIGEN: {correo_origen}")
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             enviador = EnviadorCorreo()
             correo_destino = enviador.obtener_correo_por_codigo(codigo_archivo)
