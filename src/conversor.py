@@ -1,9 +1,20 @@
 import os
 import logging
 from fpdf import FPDF
-from src.config import FONTS_DIR, DEFAULT_FONT, PDF_DIR, obtener_info_empresa, obtener_logo_por_empresa
+from src.config import PDF_DIR, obtener_info_empresa, obtener_logo_por_empresa
 
 class ConversorPDF:
+    def __init__(self):
+        # Inicialización similar a la de visor para los fonts
+        self.base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.project_dir = os.path.dirname(self.base_dir)
+        self.fonts_dir = os.path.join(self.project_dir, 'fonts')
+        self.default_font = {
+            'family': 'JetBrainsMono',
+            'style': '',
+            'file': 'JetBrainsMono-SemiBoldItalic.ttf'
+        }
+
     def validar_archivo(self, ruta_usuario, nombre_archivo):
         ruta_archivo = os.path.normpath(os.path.join(ruta_usuario, 'entrada', f'{nombre_archivo}.txt'))
         if not os.path.exists(ruta_archivo):
@@ -26,24 +37,33 @@ class ConversorPDF:
 
             os.makedirs(PDF_DIR, exist_ok=True)
             font_size = 9 if tamano_letra == 'N' else 8
-            pdf = PDF(info_empresa)
-            source_pro_path = os.path.normpath(os.path.join(FONTS_DIR, DEFAULT_FONT['file']))
+            
+            # Pasamos la referencia a fonts_dir y default_font al PDF
+            pdf = PDF(info_empresa, self.fonts_dir, self.default_font)
+            source_pro_path = os.path.normpath(os.path.join(self.fonts_dir, self.default_font['file']))
 
             if not os.path.exists(source_pro_path):
                 logging.error(f"Archivo de fuente no encontrado: {source_pro_path}")
-                return None
+                # No retornamos None, seguimos adelante para usar fuente por defecto
+                logging.warning("Usando fuente por defecto del sistema")
+            else:
+                # Solo añadimos la fuente si el archivo existe
+                pdf.add_font(self.default_font['family'], '', source_pro_path, uni=True)
+                pdf.set_font(self.default_font['family'], size=font_size)
             
-            pdf.add_font(DEFAULT_FONT['family'], '', source_pro_path, uni=True)
             pdf.set_auto_page_break(True, margin=25)  # Activamos el salto automático con margen adecuado
             pdf.add_page()
-            pdf.set_font(DEFAULT_FONT['family'], size=font_size)
+            
+            # Si no se pudo añadir la fuente, usamos la fuente por defecto
+            if not os.path.exists(source_pro_path):
+                pdf.set_font("", size=font_size)
             
             margin_left = 14
             margin_right = 195
             pdf.set_left_margin(margin_left)
             pdf.set_right_margin(pdf.w - margin_right)
             
-            pdf.set_y(34) # Posicionar correctamente después del encabezado - ajustar este valor si es necesario
+            pdf.set_y(34) # Posicionar correctamente después del encabezado
             
             char_width = pdf.get_string_width("0")
             max_chars = int((margin_right - margin_left) / char_width)
@@ -79,13 +99,29 @@ class ConversorPDF:
             return None
 
 class PDF(FPDF):
-    def __init__(self, info_empresa, *args, **kwargs):
+    def __init__(self, info_empresa, fonts_dir=None, default_font=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.info_empresa = info_empresa
         self.tipo_empresa = info_empresa['tipo_empresa']
         self.pie_pagina1 = info_empresa['pie_pagina1']
         self.pie_pagina2 = info_empresa['pie_pagina2']
         self.pie_pagina3 = info_empresa['pie_pagina3']
+        
+        # Guardamos la referencia a los fonts
+        self.base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.fonts_dir = fonts_dir
+        self.default_font = default_font
+        
+        # Verificamos y cargamos la fuente por defecto
+        if self.default_font and self.fonts_dir:
+            source_pro_path = os.path.normpath(os.path.join(self.fonts_dir, self.default_font['file']))
+            if os.path.exists(source_pro_path):
+                self.add_font(self.default_font['family'], '', source_pro_path, uni=True)
+                self.default_font_loaded = True
+            else:
+                self.default_font_loaded = False
+        else:
+            self.default_font_loaded = False
         
     def header(self):
         logo_path = obtener_logo_por_empresa(self.tipo_empresa)
@@ -120,14 +156,28 @@ class PDF(FPDF):
 
     def footer(self):
         self.set_y(-21)
-        self.set_font("Helvetica", 'BI', 10)
+        
+        # Usamos la fuente cargada o la fuente por defecto si no está disponible
+        if self.default_font_loaded:
+            # Usamos la misma fuente sin estilo en negrita para evitar el error
+            self.set_font(self.default_font['family'], '', 10)
+        else:
+            self.set_font("", '', 10)
+            
         self.cell(0, 4, "Excelencia desde el origen hasta el producto final", ln=True, align='C')
+        
         margen = 15
         posicion_inicial = margen
         posicion_final = self.w - margen
         self.line(posicion_inicial, self.get_y() + 2, posicion_final, self.get_y() + 2)
         self.ln(4)
-        self.set_font("Helvetica", "", 8)
+        
+        # Usamos la fuente cargada o la fuente por defecto si no está disponible
+        if self.default_font_loaded:
+            self.set_font(self.default_font['family'], "", 8)
+        else:
+            self.set_font("", "", 8)
+            
         texto_pie = f"{self.pie_pagina1} | {self.pie_pagina2} | {self.pie_pagina3}"
         self.set_x(margen)
         self.multi_cell(self.w - 2*margen, 4, texto_pie, align='C')

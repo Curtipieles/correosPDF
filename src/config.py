@@ -65,14 +65,6 @@ ESTADO_DIR = os.path.join(DATA_DIR, 'estado')
 ORIGEN_DIR = os.path.join(DATA_DIR, 'origen')
 IMAGENES = os.path.join(DATA_DIR, 'img')
 
-FONTS_DIR = os.path.join(BASE_DIR, 'fonts')
-DEFAULT_FONT = {
-    'family': 'JetBrainsMono',
-    'style': '',
-    'file': 'JetBrainsMono-SemiBoldItalic.ttf'
-}
-FONT_FILE_PATH = os.path.join(FONTS_DIR, DEFAULT_FONT['file'])
-
 # Rutas de archivos importantes
 ARCHIVO_EMPRESA = os.path.join(ORIGEN_DIR, 'empresa.txt') # Nuevo archivo de configuración
 ARCHIVO_DIRECCIONES = os.path.join(ORIGEN_DIR, 'direcciones.txt')
