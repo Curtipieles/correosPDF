@@ -10,9 +10,10 @@ import src.config as cfg
 
 # Configuración de logging
 logging.getLogger('fontTools').setLevel(logging.WARNING)
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler()])
+logging.basicConfig(level=logging.CRITICAL, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler()])
 root_logger = logging.getLogger()
-root_logger.setLevel(logging.INFO)
+root_logger.setLevel(logging.CRITICAL)
+
 class ProcesadorCorreos:
     def __init__(self, ruta_usuario, tamano_letra, estado_proceso):
         self.ruta_usuario = ruta_usuario
@@ -23,7 +24,6 @@ class ProcesadorCorreos:
         self.archivos_pendientes = self._obtener_archivos_pendientes() if estado_proceso == '1' else []
 
     def _obtener_info_empresa(self):
-        """Obtiene información de la empresa del archivo empresa.txt"""
         info_empresa = cfg.obtener_info_empresa()
         if not info_empresa:
             logging.error("No se pudo obtener información de empresa.txt")
@@ -31,11 +31,15 @@ class ProcesadorCorreos:
         return info_empresa
     
     def actualizar_estado_envio(self, codigo_archivo):
-        """Actualiza el estado de envío a 0 (enviado) para el código especificado."""
         try:
+            if not os.path.exists(cfg.ARCHIVO_DIRECCIONES):
+                logging.error(f"El archivo de direcciones no existe: {cfg.ARCHIVO_DIRECCIONES}")
+                return False
+                
             with open(cfg.ARCHIVO_DIRECCIONES, 'r') as file:
                 lineas = file.readlines()
             
+            actualizado = False
             with open(cfg.ARCHIVO_DIRECCIONES, 'w') as file:
                 for linea in lineas:
                     datos = linea.strip().split(',')
@@ -43,16 +47,16 @@ class ProcesadorCorreos:
                         # Actualizar estado a 0 (enviado)
                         file.write(f"0,{datos[1]},{datos[2]}\n")
                         logging.info(f"Estado de envío actualizado a 0 para {codigo_archivo}")
+                        actualizado = True
                     else:
                         file.write(linea)
             
-            return True
+            return actualizado
         except Exception as e:
             logging.error(f"Error actualizando estado de envío para {codigo_archivo}: {e}")
             return False
             
     def _obtener_archivos_pendientes(self):
-        """Obtiene la lista de archivos pendientes de envío (estado 1) de la libreta de direcciones."""
         try:
             archivos_pendientes = []
             
@@ -87,6 +91,13 @@ class ProcesadorCorreos:
         try:
             if not self.info_empresa:
                 logging.error("No se pudieron obtener la información de la empresa")
+                EstadoCorreo.generar_estado(
+                    os.path.splitext(nombre_archivo)[0], 
+                    "ERROR", 
+                    "No se pudo obtener información de la empresa", 
+                    None, 
+                    None
+                )
                 return False
                 
             nombre_base = os.path.splitext(nombre_archivo)[0]  # Obtiene el nombre sin extensión
@@ -94,51 +105,95 @@ class ProcesadorCorreos:
             # Verificar si este archivo NO está en la lista de pendientes (solo en modo reenvío)
             if self.estado_proceso == '1' and nombre_base not in self.archivos_pendientes:
                 logging.info(f"Omitiendo archivo que no está pendiente: {nombre_archivo}")
+                # Generar un registro para este archivo omitido
+                EstadoCorreo.generar_estado(
+                    nombre_base, 
+                    "OMITIDO", 
+                    "Archivo no está en la lista de pendientes", 
+                    None, 
+                    self.info_empresa['correo_origen']
+                )
                 return True  # Considerar como éxito ya que no está en la lista de pendientes
                 
             logging.info(f"Procesando archivo: {nombre_archivo}")
+            
+            # Verificación previa de archivos críticos
+            if not os.path.exists(cfg.ARCHIVO_DIRECCIONES) or not os.path.exists(cfg.ARCHIVO_INFO_CORREOS):
+                detalles_error = f"Archivo direcciones.txt o info_correo.txt no fue encontrado"
+                logging.error(detalles_error)
+                EstadoCorreo.generar_estado(
+                    nombre_base, 
+                    "ERROR", 
+                    detalles_error,
+                    None, 
+                    self.info_empresa['correo_origen']
+                )
+                return False
             
             pdf_path = None
             estado_correo = "ERROR"
             detalles_error = None
             
             # Convertir a PDF
-            conversor = ConversorPDF()
-            pdf_path = conversor.convertir_a_pdf(self.ruta_usuario, nombre_base, self.tamano_letra)
-            
-            if not pdf_path:
-                detalles_error = f"No se pudo generar el PDF para archivo: {nombre_archivo}"
+            try:
+                conversor = ConversorPDF()
+                pdf_path = conversor.convertir_a_pdf(self.ruta_usuario, nombre_base, self.tamano_letra)
+                
+                if not pdf_path:
+                    detalles_error = f"No se pudo generar el PDF para archivo: {nombre_archivo}"
+                    logging.error(detalles_error)
+                    EstadoCorreo.generar_estado(
+                        nombre_base, 
+                        "ERROR", 
+                        detalles_error, 
+                        None, 
+                        self.info_empresa['correo_origen']
+                    )
+                    return False
+                
+                logging.info(f"PDF generado exitosamente: {pdf_path}")
+            except Exception as e:
+                detalles_error = f"Error al generar PDF: {str(e)}"
                 logging.error(detalles_error)
-                EstadoCorreo.generar_estado(nombre_base, "ERROR", detalles_error, None, self.info_empresa['correo_origen'])
+                EstadoCorreo.generar_estado(
+                    nombre_base, 
+                    "ERROR", 
+                    detalles_error, 
+                    None, 
+                    self.info_empresa['correo_origen']
+                )
                 return False
 
-            logging.info(f"PDF generado exitosamente: {pdf_path}")
-
-            if not os.path.exists(cfg.ARCHIVO_DIRECCIONES) or not os.path.exists(cfg.ARCHIVO_INFO_CORREOS):
-                detalles_error = f"Archivo direcciones.txt o info_correo.txt no fue encontrado"
-                logging.error(detalles_error)
-                EstadoCorreo.generar_estado(nombre_base, "ERROR", detalles_error, pdf_path, self.info_empresa['correo_origen'])
-                return False
-
-            smtp_config = cfg.obtener_config_smtp(self.info_empresa['correo_origen'], self.info_empresa['app_pw'])
-            enviador = EnviadorCorreo()
-            enviado = enviador.enviar_correo_gmail(
-                nombre_base, 
-                pdf_path, 
-                smtp_config
-            )
-            exito, detalle = enviado # Desempaquetamos la tupla
-            if exito:
-                estado_correo = "ENVIADO"
-                detalles_error = detalle
-            else:
+            # Enviar correo
+            try:
+                smtp_config = cfg.obtener_config_smtp(self.info_empresa['correo_origen'], self.info_empresa['app_pw'])
+                enviador = EnviadorCorreo()
+                enviado = enviador.enviar_correo_gmail(
+                    nombre_base, 
+                    pdf_path, 
+                    smtp_config
+                )
+                
+                exito, detalle = enviado # Desempaquetamos la tupla
+                if exito:
+                    estado_correo = "ENVIADO"
+                    detalles_error = detalle
+                    
+                    # Actualizamos el estado en la libreta de direcciones solo si fue enviado con éxito
+                    estado_archivo = self.actualizar_estado_envio(nombre_base)
+                    if estado_archivo:
+                        logging.info(f"Se cambió el estado a '0' en la libreta de direcciones para: {nombre_base}")
+                    else:
+                        logging.warning(f"No se pudo cambiar el estado a '0' en la libreta de direcciones para: {nombre_base}")
+                else:
+                    estado_correo = "ERROR"
+                    detalles_error = detalle
+            except Exception as e:
                 estado_correo = "ERROR"
-                detalles_error = detalle
-            estado_archivo = self.actualizar_estado_envio(nombre_base)
-            if estado_archivo:
-                logging.warning(f"Se cambio el estado a '0' en la libreta de direcciones para: {nombre_base}")
-            else:
-                logging.warning(f"No se pudo cambiar el estado a '0' en la libreta de direcciones para: {nombre_base}")
+                detalles_error = f"Error durante el envío: {str(e)}"
+                logging.error(detalles_error)
+            
+            # Generar registro del estado final
             registro_generado = EstadoCorreo.generar_estado(
                 nombre_base, 
                 estado_correo, 
@@ -150,12 +205,22 @@ class ProcesadorCorreos:
             if not registro_generado:
                 logging.warning(f"No se pudo generar el registro para: {nombre_base}")
             
-            return enviado
+            return exito if 'exito' in locals() else False
 
         except Exception as e:
             logging.error(f"Error procesando archivo {nombre_archivo}: {e}")
-            EstadoCorreo.generar_estado(nombre_base, "ERROR", str(e), pdf_path if 'pdf_path' in locals() else None, 
-                                       self.info_empresa['correo_origen'] if self.info_empresa else None)
+            # Asegurar que se genere un registro incluso en caso de excepción general
+            try:
+                nombre_base = os.path.splitext(nombre_archivo)[0]
+                EstadoCorreo.generar_estado(
+                    nombre_base, 
+                    "ERROR", 
+                    f"Error general: {str(e)}", 
+                    pdf_path if 'pdf_path' in locals() else None, 
+                    self.info_empresa['correo_origen'] if self.info_empresa else None
+                )
+            except:
+                logging.critical(f"Error fatal al generar registro para {nombre_archivo}")
             return False
     
     def procesar_todos(self, intervalo_min=30, intervalo_max=60):
@@ -177,13 +242,30 @@ class ProcesadorCorreos:
             total_archivos = len(archivos)
             logging.info(f"Se encontraron {total_archivos} archivos para procesar")
             
+            # Si estamos en modo reenvío, filtrar solo los archivos pendientes
             if self.estado_proceso == '1':
+                # Filtrar archivos y registrar los omitidos
+                archivos_originales = archivos.copy()
                 archivos_a_procesar = []
-                for archivo in archivos:
+                for archivo in archivos_originales:
                     nombre_base = os.path.splitext(archivo)[0]
                     if nombre_base in self.archivos_pendientes:
                         archivos_a_procesar.append(archivo)
-                        
+                
+                # Registrar los archivos que se omitieron en el filtrado inicial
+                omitidos = set(archivo for archivo in archivos_originales) - set(archivo for archivo in archivos_a_procesar)
+                for archivo_omitido in omitidos:
+                    nombre_base = os.path.splitext(archivo_omitido)[0]
+                    logging.info(f"Archivo omitido en el filtrado inicial: {archivo_omitido}")
+                    if self.info_empresa:
+                        EstadoCorreo.generar_estado(
+                            nombre_base, 
+                            "OMITIDO", 
+                            "Archivo no está en la lista de pendientes (filtrado inicial)", 
+                            None, 
+                            self.info_empresa['correo_origen']
+                        )
+                
                 archivos = archivos_a_procesar
                 logging.info(f"Después de filtrar, hay {len(archivos)} archivos pendientes por procesar")
                 
@@ -217,6 +299,15 @@ class ProcesadorCorreos:
             
         except Exception as e:
             logging.error(f"Error al procesar archivos: {e}")
+            # Intentar registrar este error general
+            if self.info_empresa:
+                EstadoCorreo.generar_estado(
+                    "proceso_general", 
+                    "ERROR", 
+                    f"Error general en procesar_todos: {str(e)}", 
+                    None, 
+                    self.info_empresa['correo_origen']
+                )
             return False
 
 def main():

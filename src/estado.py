@@ -11,12 +11,10 @@ from src.enviar_correo import EnviadorCorreo
 class EstadoCorreo:
     @staticmethod
     def verificar_estado_red():
-        """Verifica el estado de la red y devuelve información de diagnóstico"""
         info_red = {}
         
         # Comprobar si hay conexión a internet
         try:
-            # Intenta hacer ping a Google DNS
             socket.create_connection(("8.8.8.8", 53), timeout=3)
             info_red["conexion_internet"] = True
         except (socket.error, socket.timeout):
@@ -36,7 +34,6 @@ class EstadoCorreo:
         
         info_red["interfaces"] = interfaces_activas
         
-        # Estadísticas de red
         try:
             net_io = psutil.net_io_counters()
             info_red["bytes_enviados"] = net_io.bytes_sent
@@ -48,14 +45,12 @@ class EstadoCorreo:
 
     @staticmethod
     def generar_diagnostico(detalles_error):
-        """Genera un diagnóstico basado en el tipo de error"""
         if not detalles_error:
             return "No se detectaron errores"
         
         diagnostico = "Error desconocido"
         detalles_lower = detalles_error.lower()
         
-        # Detectar tipos específicos de error
         if any(palabra in detalles_lower for palabra in ["timeout", "tiempo", "agotado"]):
             diagnostico = "Tiempo de espera agotado. Posible conexión lenta o inestable."
         elif any(palabra in detalles_lower for palabra in ["connection", "conexión", "socket", "network", "red"]):
@@ -68,22 +63,25 @@ class EstadoCorreo:
             diagnostico = "Error en el servidor SMTP de correo."
         elif any(palabra in detalles_lower for palabra in ["archivo", "file", "no encontrado", "not found"]):
             diagnostico = "Error con el archivo o su ubicación."
+        elif "omitido" in detalles_lower:
+            diagnostico = "Archivo omitido del procesamiento según criterios de filtrado."
         
         return diagnostico
 
     @staticmethod
     def generar_estado(codigo_archivo, estado="ERROR", detalles_error=None, pdf_path=None, correo_origen=None):
-        """Genera archivos de estado para el procesamiento de correos."""
         try:
+            if not codigo_archivo:
+                logging.error("No se proporcionó un código de archivo válido")
+                return False
+                
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             enviador = EnviadorCorreo()
             correo_destino = enviador.obtener_correo_por_codigo(codigo_archivo)
             id_transaccion = str(uuid.uuid4())[:8]  # ID único para seguimiento
             
-            # Generar diagnóstico detallado
             diagnostico = EstadoCorreo.generar_diagnostico(detalles_error)
             
-            # Obtener información de red si hay error
             info_red = {}
             if estado == "ERROR":
                 info_red = EstadoCorreo.verificar_estado_red()
@@ -99,14 +97,12 @@ class EstadoCorreo:
             # Crear directorio de estados si no existe
             os.makedirs(ESTADO_DIR, exist_ok=True)
             
-            # 1. Generar archivo individual para este correo específico
             archivo_individual = os.path.join(ESTADO_DIR, f"registro_{codigo_archivo}.txt")
             
             # Información del sistema
             hostname = platform.node()
             sistema_operativo = f"{platform.system()} {platform.version()}"
             
-            # Formato del registro detallado individual
             registro_detallado = (
                 f"Archivo: {codigo_archivo}\n"
                 f"Fecha De Envio: {timestamp}\n"
@@ -117,7 +113,6 @@ class EstadoCorreo:
                 f"Estado conexión: {estado_conexion}\n"
             )
             
-            # Añadir información de red si hay error
             if estado == "ERROR" and info_red:
                 interfaces = "\n  ".join([f"{i['nombre']}: {i['direccion']}" for i in info_red.get("interfaces", [])])
                 registro_detallado += (
@@ -126,7 +121,6 @@ class EstadoCorreo:
                     f"  Interfaces de red:\n  {interfaces if interfaces else 'No hay interfaces con IPv4 disponibles'}\n"
                 )
             
-            # Continuar con el resto de la información
             registro_detallado += (
                 f"Ruta PDF: {pdf_path if pdf_path else 'No se encontró la ruta del PDF'}\n"
                 f"Correo origen: {correo_origen if correo_origen else 'N/A'}\n"
@@ -139,14 +133,13 @@ class EstadoCorreo:
             with open(archivo_individual, 'w', encoding='utf-8') as file:
                 file.write(registro_detallado)
             
-            # 2. Actualizar archivo general de estado_correos.txt
             estado_correos_path = os.path.join(ESTADO_DIR, "estado_correos.txt")
 
             encabezado = " ARCHIVO    || FECHA ENVÍO         || ESTADO  || DIAGNÓSTICO\n"
             separador = "=" * 100 + "\n"
             
             # Formato resumido para el archivo general
-            nuevo_registro = f"{codigo_archivo} || {timestamp} || {estado} || {diagnostico}\n"
+            nuevo_registro = f"{codigo_archivo.ljust(10)} || {timestamp} || {estado.ljust(8)} || {diagnostico}\n"
             
             registros_acumulados = []
             
@@ -163,7 +156,6 @@ class EstadoCorreo:
                 except Exception as e:
                     logging.warning(f"Error leyendo registros previos: {e}")
             
-            # Añadir el nuevo registro al principio de la lista
             registros_acumulados.insert(0, nuevo_registro)
             
             with open(estado_correos_path, 'w', encoding='utf-8') as file:
@@ -176,4 +168,13 @@ class EstadoCorreo:
 
         except Exception as e:
             logging.error(f"Error al generar registro de estado: {e}")
+            # Intentar crear un registro de emergencia si falla el registro normal
+            try:
+                os.makedirs(ESTADO_DIR, exist_ok=True)
+                error_log_path = os.path.join(ESTADO_DIR, "errores_registro.log")
+                with open(error_log_path, 'a', encoding='utf-8') as error_file:
+                    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    error_file.write(f"{timestamp} - Error al registrar '{codigo_archivo}': {e}\n")
+            except:
+                pass
             return False
