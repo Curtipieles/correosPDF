@@ -39,7 +39,7 @@ class ConversorPDF:
             font_size = 9 if tamano_letra == 'N' else 8
             
             # Pasamos la referencia a fonts_dir y default_font al PDF
-            pdf = PDF(info_empresa, self.fonts_dir, self.default_font)
+            pdf = PDF(info_empresa)
             source_pro_path = os.path.normpath(os.path.join(self.fonts_dir, self.default_font['file']))
 
             if not os.path.exists(source_pro_path):
@@ -99,29 +99,13 @@ class ConversorPDF:
             return None
 
 class PDF(FPDF):
-    def __init__(self, info_empresa, fonts_dir=None, default_font=None, *args, **kwargs):
+    def __init__(self, info_empresa, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.info_empresa = info_empresa
         self.tipo_empresa = info_empresa['tipo_empresa']
         self.pie_pagina1 = info_empresa['pie_pagina1']
         self.pie_pagina2 = info_empresa['pie_pagina2']
         self.pie_pagina3 = info_empresa['pie_pagina3']
-        
-        # Guardamos la referencia a los fonts
-        self.base_dir = os.path.dirname(os.path.abspath(__file__))
-        self.fonts_dir = fonts_dir
-        self.default_font = default_font
-        
-        # Verificamos y cargamos la fuente por defecto
-        if self.default_font and self.fonts_dir:
-            source_pro_path = os.path.normpath(os.path.join(self.fonts_dir, self.default_font['file']))
-            if os.path.exists(source_pro_path):
-                self.add_font(self.default_font['family'], '', source_pro_path, uni=True)
-                self.default_font_loaded = True
-            else:
-                self.default_font_loaded = False
-        else:
-            self.default_font_loaded = False
         
     def header(self):
         logo_path = obtener_logo_por_empresa(self.tipo_empresa)
@@ -156,14 +140,7 @@ class PDF(FPDF):
 
     def footer(self):
         self.set_y(-21)
-        
-        # Usamos la fuente cargada o la fuente por defecto si no está disponible
-        if self.default_font_loaded:
-            # Usamos la misma fuente sin estilo en negrita para evitar el error
-            self.set_font(self.default_font['family'], '', 10)
-        else:
-            self.set_font("", '', 10)
-            
+        self.set_font("Helvetica", '', 10)
         self.cell(0, 4, "Excelencia desde el origen hasta el producto final", ln=True, align='C')
         
         margen = 15
@@ -172,12 +149,8 @@ class PDF(FPDF):
         self.line(posicion_inicial, self.get_y() + 2, posicion_final, self.get_y() + 2)
         self.ln(4)
         
-        # Usamos la fuente cargada o la fuente por defecto si no está disponible
-        if self.default_font_loaded:
-            self.set_font(self.default_font['family'], "", 8)
-        else:
-            self.set_font("", "", 8)
-            
+        self.set_font("Helvetica", "", 8)
+        
         texto_pie = f"{self.pie_pagina1} | {self.pie_pagina2} | {self.pie_pagina3}"
         self.set_x(margen)
         self.multi_cell(self.w - 2*margen, 4, texto_pie, align='C')
