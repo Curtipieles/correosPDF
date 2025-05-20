@@ -12,7 +12,6 @@ class EstadoCorreo:
     @staticmethod
     def verificar_estado_red():
         info_red = {}
-        
         # Comprobar si hay conexión a internet
         try:
             socket.create_connection(("8.8.8.8", 53), timeout=3)

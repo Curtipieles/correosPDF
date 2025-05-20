@@ -5,7 +5,6 @@ from src.config import PDF_DIR, obtener_info_empresa, obtener_logo_por_empresa
 
 class ConversorPDF:
     def __init__(self):
-        # Inicialización similar a la de visor para los fonts
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
         self.project_dir = os.path.dirname(self.base_dir)
         self.fonts_dir = os.path.join(self.project_dir, 'fonts')
@@ -38,13 +37,11 @@ class ConversorPDF:
             os.makedirs(PDF_DIR, exist_ok=True)
             font_size = 9 if tamano_letra == 'N' else 8
             
-            # Pasamos la referencia a fonts_dir y default_font al PDF
             pdf = PDF(info_empresa)
             source_pro_path = os.path.normpath(os.path.join(self.fonts_dir, self.default_font['file']))
 
             if not os.path.exists(source_pro_path):
                 logging.error(f"Archivo de fuente no encontrado: {source_pro_path}")
-                # No retornamos None, seguimos adelante para usar fuente por defecto
                 logging.warning("Usando fuente por defecto del sistema")
             else:
                 # Solo añadimos la fuente si el archivo existe
@@ -103,9 +100,9 @@ class PDF(FPDF):
         super().__init__(*args, **kwargs)
         self.info_empresa = info_empresa
         self.tipo_empresa = info_empresa['tipo_empresa']
-        self.pie_pagina1 = info_empresa['pie_pagina1']
-        self.pie_pagina2 = info_empresa['pie_pagina2']
-        self.pie_pagina3 = info_empresa['pie_pagina3']
+        self.pie_pagina1 = info_empresa['pie_pagina1'] # Direccion
+        self.pie_pagina2 = info_empresa['pie_pagina2'] # Telefono
+        self.pie_pagina3 = info_empresa['pie_pagina3'] # Correo Empleado
         
     def header(self):
         logo_path = obtener_logo_por_empresa(self.tipo_empresa)
@@ -150,7 +147,6 @@ class PDF(FPDF):
         self.ln(4)
         
         self.set_font("Helvetica", "", 8)
-        
         texto_pie = f"{self.pie_pagina1} | {self.pie_pagina2} | {self.pie_pagina3}"
         self.set_x(margen)
         self.multi_cell(self.w - 2*margen, 4, texto_pie, align='C')

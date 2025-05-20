@@ -10,9 +10,9 @@ import src.config as cfg
 
 # Configuración de logging
 logging.getLogger('fontTools').setLevel(logging.WARNING)
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler()])
+logging.basicConfig(level=logging.CRITICAL, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler()])
 root_logger = logging.getLogger()
-root_logger.setLevel(logging.INFO)
+root_logger.setLevel(logging.CRITICAL)
 
 class ProcesadorCorreos:
     def __init__(self, ruta_usuario, tamano_letra, estado_proceso):
@@ -70,7 +70,7 @@ class ProcesadorCorreos:
                     if not linea:
                         continue
                         
-                    # El formato es "ESTADO,CODIGO,CORREO"
+                    # El formato es "ESTADO,CODIGO,CORREO DESTINO"
                     partes = linea.split(',')
                     if len(partes) >= 3:
                         estado = partes[0].strip()
@@ -102,7 +102,6 @@ class ProcesadorCorreos:
                 
             nombre_base = os.path.splitext(nombre_archivo)[0]  # Obtiene el nombre sin extensión
             
-            # Verificar si este archivo NO está en la lista de pendientes (solo en modo reenvío)
             if self.estado_proceso == '1' and nombre_base not in self.archivos_pendientes:
                 logging.info(f"Omitiendo archivo que no está pendiente: {nombre_archivo}")
                 # Generar un registro para este archivo omitido
@@ -179,7 +178,6 @@ class ProcesadorCorreos:
                     estado_correo = "ENVIADO"
                     detalles_error = detalle
                     
-                    # Actualizamos el estado en la libreta de direcciones solo si fue enviado con éxito
                     estado_archivo = self.actualizar_estado_envio(nombre_base)
                     if estado_archivo:
                         logging.info(f"Se cambió el estado a '0' en la libreta de direcciones para: {nombre_base}")
@@ -242,7 +240,6 @@ class ProcesadorCorreos:
             total_archivos = len(archivos)
             logging.info(f"Se encontraron {total_archivos} archivos para procesar")
             
-            # Si estamos en modo reenvío, filtrar solo los archivos pendientes
             if self.estado_proceso == '1':
                 # Filtrar archivos y registrar los omitidos
                 archivos_originales = archivos.copy()
@@ -299,12 +296,11 @@ class ProcesadorCorreos:
             
         except Exception as e:
             logging.error(f"Error al procesar archivos: {e}")
-            # Intentar registrar este error general
             if self.info_empresa:
                 EstadoCorreo.generar_estado(
                     "proceso_general", 
                     "ERROR", 
-                    f"Error general en procesar_todos: {str(e)}", 
+                    f"Error general en la funcion procesar_todos: {str(e)}", 
                     None, 
                     self.info_empresa['correo_origen']
                 )
@@ -315,7 +311,6 @@ def main():
         if len(sys.argv) != 4:
             logging.error("Argumentos incorrectos. Uso: python main.py <ruta_usuario> <tamano_letra> <estado_proceso>")
             sys.exit(1)
-
         if not os.path.exists(sys.argv[1]):
             logging.error(f"La ruta '{sys.argv[1]}' no existe.")
             sys.exit(1)
