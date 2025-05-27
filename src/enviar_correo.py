@@ -186,7 +186,7 @@ class EnviadorCorreo:
                     detalles_error = f"No se encontró correo destino para {codigo_archivo}"
                     logging.error(detalles_error)
                     return False, detalles_error
-                    
+                #agregar filtro para diagnostico de correo    
                 if not info:
                     detalles_error = "No se pudo obtener información del correo"
                     logging.error(detalles_error)

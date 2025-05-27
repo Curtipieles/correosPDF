@@ -10,9 +10,9 @@ import src.config as cfg
 
 # Configuración de logging
 logging.getLogger('fontTools').setLevel(logging.WARNING)
-logging.basicConfig(level=logging.CRITICAL, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler()])
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler()])
 root_logger = logging.getLogger()
-root_logger.setLevel(logging.CRITICAL)
+root_logger.setLevel(logging.INFO)
 
 class ProcesadorCorreos:
     def __init__(self, ruta_usuario, tamano_letra, estado_proceso):
@@ -162,7 +162,6 @@ class ProcesadorCorreos:
                     self.info_empresa['correo_origen']
                 )
                 return False
-
             # Enviar correo
             try:
                 smtp_config = cfg.obtener_config_smtp(self.info_empresa['correo_origen'], self.info_empresa['app_pw'])

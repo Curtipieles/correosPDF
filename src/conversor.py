@@ -23,7 +23,7 @@ class ConversorPDF:
             logging.error(f"Sin permisos de lectura: {ruta_archivo}")
             return False
         return True
-
+ 
     def convertir_a_pdf(self, ruta_usuario, nombre_archivo, tamano_letra):
         try:
             if not self.validar_archivo(ruta_usuario, nombre_archivo):

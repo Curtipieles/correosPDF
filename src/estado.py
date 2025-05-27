@@ -43,10 +43,21 @@ class EstadoCorreo:
         return info_red
 
     @staticmethod
-    def generar_diagnostico(detalles_error):
+    def generar_diagnostico(detalles_error, correo_destino=None):
+        """
+        Generar diagnóstico que incluye validación de dominios
+        """
+        # Si no hay errores Y hay correo destino, validar dominio
+        if correo_destino and (not detalles_error or detalles_error == "No hay detalles de error"):
+            es_sospechoso, mensaje_dominio = EstadoCorreo.validar_dominio_correo(correo_destino)
+            if es_sospechoso:
+                return mensaje_dominio
+        
+        # Si no hay errores y el dominio está bien
         if not detalles_error:
             return "No se detectaron errores"
         
+        # Si hay errores, procesarlos como siempre
         diagnostico = "Error desconocido"
         detalles_lower = detalles_error.lower()
         
@@ -66,6 +77,33 @@ class EstadoCorreo:
             diagnostico = "Archivo omitido del procesamiento según criterios de filtrado."
         
         return diagnostico
+    
+    @staticmethod
+    def validar_dominio_correo(correo_destino):
+        """
+        Valida si el dominio del correo tiene errores tipográficos comunes
+        Retorna (es_sospechoso, mensaje_diagnostico)
+        """
+        if not correo_destino or '@' not in correo_destino:
+            return False, None
+        
+        dominio = correo_destino.split('@')[1].lower()
+        
+        # Dominios populares y sus variantes tipográficas comunes
+        dominios_populares = {
+            'gmail.com': ['gmai.com', 'gmial.com', 'gmail.co', 'gmal.com', 'gmil.com', 'gmail.con'],
+            'hotmail.com': ['hotmai.com', 'hotmial.com', 'hotmal.com', 'hotmil.com', 'hotmail.co'],
+            'outlook.com': ['outlok.com', 'outloo.com', 'outlook.co', 'outluk.com'],
+            'yahoo.com': ['yaho.com', 'yahoo.co', 'yhoo.com', 'yahu.com'],
+            'icloud.com': ['iclod.com', 'icloud.co', 'icoud.com'],
+            'live.com': ['liv.com', 'live.co', 'liev.com']
+        }
+        
+        for dominio_correcto, variantes in dominios_populares.items():
+            if dominio in variantes:
+                return True, f"Posible error tipográfico en dominio. ¿Quiso decir '{dominio_correcto}'?"
+        
+        return False, None
 
     @staticmethod
     def generar_estado(codigo_archivo, estado="ERROR", detalles_error=None, pdf_path=None, correo_origen=None):
@@ -79,7 +117,7 @@ class EstadoCorreo:
             correo_destino = enviador.obtener_correo_por_codigo(codigo_archivo)
             id_transaccion = str(uuid.uuid4())[:8]  # ID único para seguimiento
             
-            diagnostico = EstadoCorreo.generar_diagnostico(detalles_error)
+            diagnostico = EstadoCorreo.generar_diagnostico(detalles_error, correo_destino)
             
             info_red = {}
             if estado == "ERROR":
