@@ -48,7 +48,6 @@ class EnviadorCorreo:
         config_default = {
             'color_encabezado': '#333333',
             'nombre_empresa': 'Empresa S.A.S',
-            'descripcion': 'Productos y servicios de calidad',
             'color_banner': '#f5f5f5',
             'color_borde': '#e0e0e0',
             'color_texto': '#555555'
@@ -186,7 +185,6 @@ class EnviadorCorreo:
                     detalles_error = f"No se encontró correo destino para {codigo_archivo}"
                     logging.error(detalles_error)
                     return False, detalles_error
-                #agregar filtro para diagnostico de correo    
                 if not info:
                     detalles_error = "No se pudo obtener información del correo"
                     logging.error(detalles_error)
@@ -228,12 +226,6 @@ class EnviadorCorreo:
                 empresa_codigo = self.tipo_empresa.lower()
                 msg['Feedback-ID'] = f"{empresa_codigo}:{codigo_archivo}:{time.strftime('%Y%m')}"
                 
-                # Preparar la sección del encabezado sin logo
-                encabezado_html = f"""
-                <div style="background-color: {self.color_encabezado}; padding: 15px; text-align: center;">
-                    <h1 style="color: #ffffff; margin: 0; font-size: 22px;">{self.nombre_empresa}</h1>
-                </div>
-                """
                 
                 # Convertir HTML a texto plano con la frase aleatoria
                 texto_plano = self._limpiar_texto_html(cuerpo)
