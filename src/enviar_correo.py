@@ -22,9 +22,39 @@ class EnviadorCorreo:
         self.internet_disponible = True
         self.info_empresa = obtener_info_empresa()
         self.tipo_empresa = self.info_empresa['tipo_empresa']
-        self.config_empresa = {
+        
+        # Inicializar variables de correos
+        self.correo_cliente = None
+        self.correo_usuario = None
+        
+        self.config_empresa = self._obtener_config_empresa()
+        self.color_encabezado = self.config_empresa['color_encabezado']
+        self.nombre_empresa = self.config_empresa['nombre_empresa']
+        self.color_banner = self.config_empresa['color_banner']
+        self.color_borde = self.config_empresa['color_borde']
+        self.color_texto = self.config_empresa['color_texto']
+        self.direccion = self.info_empresa.get('pie_pagina1', 'Cl. 8 #20-15, El Cerrito, Valle del Cauca, Colombia')
+        self.telefono = self.info_empresa.get('pie_pagina2', '+57 3173711707')
+        self.correo = self.info_empresa.get('pie_pagina3', 'No es posible acceder al servicio de correo en este instante.')
+        
+        # Frases de cierre simplificadas
+        self.frases_cierre = [
+            "Gracias por su confianza.",
+            "Estamos aquí para resolver cualquier consulta adicional.",
+            "Valoramos su confianza.",
+            "Nuestro objetivo es ofrecerle el mejor servicio.",
+            "Trabajamos para mejorar constantemente.",
+            "Gracias por confiar en nosotros.",
+            "Estamos comprometidos con su satisfacción.",
+            "Apreciamos su confianza.",
+            "Siempre a su disposición."
+        ]
+
+    def _obtener_config_empresa(self):
+        """Retorna la configuración de la empresa según el tipo"""
+        configs = {
             'CUR': {
-                'color_encabezado': '#4a2511',  # Marrón para Curtipieles
+                'color_encabezado': '#4a2511',
                 'nombre_empresa': 'Curtipieles S.A.S',
                 'color_banner': '#f5f0e8',
                 'color_borde': '#e0d5c5',
@@ -45,53 +75,18 @@ class EnviadorCorreo:
                 'color_texto': '#355d42'
             }
         }
-        config_default = {
+        
+        return configs.get(self.tipo_empresa, {
             'color_encabezado': '#333333',
             'nombre_empresa': 'Empresa S.A.S',
             'color_banner': '#f5f5f5',
             'color_borde': '#e0e0e0',
             'color_texto': '#555555'
-        }
-        self.config_actual = self.config_empresa.get(self.tipo_empresa, config_default)
-        self.color_encabezado = self.config_actual['color_encabezado']
-        self.nombre_empresa = self.config_actual['nombre_empresa']
-        self.color_banner = self.config_actual['color_banner']
-        self.color_borde = self.config_actual['color_borde']
-        self.color_texto = self.config_actual['color_texto']
-        self.direccion = self.info_empresa.get('pie_pagina1', 'Cl. 8 #20-15, El Cerrito, Valle del Cauca, Colombia')
-        self.telefono = self.info_empresa.get('pie_pagina2', '+57 3173711707')
-        self.correo = self.info_empresa.get('pie_pagina3', 'No es posible acceder al servicio de correo en este instante. ' \
-        'Le invitamos a intentarlo más tarde o utilizar canales alternativos de contacto.')
-        self.frases_cierre = [
-            "Gracias por su confianza.",
-            "Estamos aquí para resolver cualquier consulta adicional.",
-            "Valoramos su confianza.",
-            "Estamos encantados de poder ayudarle.",
-            "Nuestro objetivo es ofrecerle el mejor servicio.",
-            "Trabajamos para mejorar constantemente.",
-            "Su satisfacción es importante para nosotros.",
-            "Gracias por confiar en nosotros.",
-            "Todo nuestro equipo agradece su preferencia.",
-            "Continuamos a su disposición para cualquier consulta.",
-            "Gracias por la oportunidad de servirle.",
-            "Estamos comprometidos con su satisfacción.",
-            "La calidad es nuestra prioridad diaria.",
-            "Apreciamos su confianza.",
-            "Gracias por ser parte de nuestra clientela.",
-            "Estamos a su servicio.",
-            "Cada cliente es importante para nosotros.",
-            "Su confianza nos motiva a mejorar.",
-            "Gracias por su tiempo.",
-            "Agradecemos su preferencia.",
-            "Gracias por elegirnos.",
-            "Siempre a su disposición."
-        ]
+        })
 
     def comprobar_conexion(self):
         try:
-            # Intenta conectarse a Google DNS para verificar conexión
             socket.create_connection(("8.8.8.8", 53), timeout=3)
-            # Intenta hacer una petición HTTP a Google como segunda verificación
             requests.get("https://www.google.com", timeout=3)
             self.internet_disponible = True
             return True
@@ -105,7 +100,6 @@ class EnviadorCorreo:
                 self.comprobar_conexion()
                 time.sleep(60)  # Comprobar cada minuto
         
-        # Iniciar hilo en modo daemon para que termine cuando termine el programa principal
         thread = threading.Thread(target=monitor, daemon=True)
         thread.start()
 
@@ -124,6 +118,27 @@ class EnviadorCorreo:
         except Exception as e:
             logging.error(f"Error buscando correo: {e}")
         return None
+    
+    @staticmethod
+    def es_email_valido(email_a, email_b):
+        # Patrón regex para validar email
+        patron_email = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        
+        # Verificar que ambos emails existan y sean strings
+        if not email_a or not email_b or not isinstance(email_a, str) or not isinstance(email_b, str):
+            return None, None
+        
+        # Limpiar espacios
+        email_a = email_a.strip()
+        email_b = email_b.strip()
+        
+        # Validar ambos emails con regex
+        email_a_valido = re.match(patron_email, email_a) is not None
+        email_b_valido = re.match(patron_email, email_b) is not None
+        
+        # Retornar emails válidos o None si no son válidos
+        return (email_a if email_a_valido else None, 
+                email_b if email_b_valido else None)
     
     def obtener_info_correo(self):
         try:
@@ -149,8 +164,7 @@ class EnviadorCorreo:
         return random.choice(self.frases_cierre)
 
     def esperar_por_conexion(self, intento):
-        tiempo_espera = self.tiempo_espera_base * (2 ** (intento - 1))  # Backoff exponencial
-        tiempo_espera = min(tiempo_espera, 300)  # Máximo 5 minutos
+        tiempo_espera = min(self.tiempo_espera_base * (2 ** (intento - 1)), 300)  # Máximo 5 minutos
         
         logging.info(f"Esperando {tiempo_espera} segundos antes de reintentar (intento {intento}/{self.max_intentos})...")
         
@@ -159,14 +173,30 @@ class EnviadorCorreo:
             if self.comprobar_conexion():
                 logging.info("¡Conexión a internet recuperada!")
                 return True
-            time.sleep(5)  # Comprobar cada 5 segundos
+            time.sleep(5)
         
-        return self.comprobar_conexion()  # Comprobar una vez más antes de continuar
+        return self.comprobar_conexion()
 
     def enviar_correo_gmail(self, codigo_archivo, pdf_path, config_correo):
         detalles_error = None
-        intento = 0
         
+        # Inicializar correos
+        self.correo_cliente = self.obtener_correo_por_codigo(codigo_archivo)
+        self.correo_usuario = config_correo['usuario']
+        
+        correo_destino, correo_usuario_valido = self.es_email_valido(self.correo_cliente, self.correo_usuario)
+        
+        if not correo_destino:
+            detalles_error = f"Correo de cliente inválido o no encontrado para {codigo_archivo}"
+            logging.error(detalles_error)
+            return False, detalles_error
+            
+        if not correo_usuario_valido:
+            detalles_error = f"Correo de usuario inválido en la configuración. Por favor, revise el archivo empresa.txt ubicado en la carpeta origen dentro de su directorio de usuario para verificar y corregir la dirección de correo electrónico."
+            logging.error(detalles_error)
+            return False, detalles_error
+        
+        intento = 0
         self.iniciar_monitor_conexion()
         
         while intento < self.max_intentos:
@@ -176,15 +206,10 @@ class EnviadorCorreo:
                     detalles_error = "Sin conexión a internet"
                     logging.warning(f"Sin conexión a internet. Reintentando... (intento {intento}/{self.max_intentos})")
                     if not self.esperar_por_conexion(intento):
-                        continue  # Sigue esperando si no hay conexión
+                        continue
                 
-                correo_destino = self.obtener_correo_por_codigo(codigo_archivo)
                 info = self.obtener_info_correo()
                 
-                if not correo_destino:
-                    detalles_error = f"No se encontró correo destino para {codigo_archivo}"
-                    logging.error(detalles_error)
-                    return False, detalles_error
                 if not info:
                     detalles_error = "No se pudo obtener información del correo"
                     logging.error(detalles_error)
@@ -192,47 +217,42 @@ class EnviadorCorreo:
                     
                 asunto, cuerpo = info.asunto, info.cuerpo
                 frase_aleatoria = self._obtener_frase_aleatoria()
-                
+
                 msg = MIMEMultipart('alternative')
-                msg['From'] = formataddr((self.nombre_empresa, config_correo['usuario']))
+                msg['From'] = formataddr((self.nombre_empresa, correo_usuario_valido))
                 msg['To'] = correo_destino
                 msg['Subject'] = asunto
                 
-                # Usar un Message-ID conforme a RFC 5322 con el dominio real del remitente
-                domain = config_correo['usuario'].split('@')[1]
+                domain = correo_usuario_valido.split('@')[1]
                 msg['Message-ID'] = make_msgid(domain=domain)
                 
-                # Cabeceras Anti-Spam añadidas del segundo código
+                # Cabeceras Anti-Spam
                 msg['X-Authentication-Warning'] = f"{domain} sender verified"
                 msg['Precedence'] = 'list'
                 msg['X-Mailer'] = f"{self.nombre_empresa} Sistema CorreosPDF"
-                msg['X-Priority'] = '3'  # Prioridad normal
+                msg['X-Priority'] = '3'
                 msg['X-MSMail-Priority'] = 'Normal'
                 msg['X-Spam-Status'] = 'No'
                 msg['X-Spam-Score'] = '0.0'
                 msg['X-Spam-Level'] = ''
                 msg['X-Spam-Flag'] = 'NO'
-                
                 msg['Date'] = formatdate(localtime=False)
-                
                 msg['Reply-To'] = correo_destino
                 
-                # Configuración de desuscripción según RFC 8058
+                # Configuración de desuscripción
                 unsubscribe_email = 'unsubscribe@' + domain
                 msg['List-Unsubscribe'] = f"<mailto:{unsubscribe_email}?subject=unsubscribe-{codigo_archivo}>"
                 msg['List-Unsubscribe-Post'] = "List-Unsubscribe=One-Click"
                 
-                # Generar Feedback-ID basado en el tipo de empresa
                 empresa_codigo = self.tipo_empresa.lower()
                 msg['Feedback-ID'] = f"{empresa_codigo}:{codigo_archivo}:{time.strftime('%Y%m')}"
                 
-                
-                # Convertir HTML a texto plano con la frase aleatoria
+                # Texto plano
                 texto_plano = self._limpiar_texto_html(cuerpo)
                 texto_plano += f"\n\n{frase_aleatoria}\n\n---\n{self.nombre_empresa}\nDirección: {self.direccion}\nTeléfono: {self.telefono}\n\nPara darse de baja, responda a este correo con el asunto 'unsubscribe'"
                 part_text = MIMEText(texto_plano, 'plain', 'utf-8')
                 
-                # Versión HTML simplificada pero manteniendo el estilo consistente
+                # HTML
                 html_cuerpo = f"""
                 <!DOCTYPE html>
                 <html lang="es">
@@ -287,6 +307,7 @@ class EnviadorCorreo:
                 msg.attach(part_text)
                 msg.attach(part_html)
 
+                # Adjunto PDF
                 nombre_pdf = f"Doc_{codigo_archivo}.pdf"
                 with open(pdf_path, 'rb') as pdf_file:
                     part = MIMEApplication(
@@ -308,57 +329,33 @@ class EnviadorCorreo:
                         server.send_message(msg)
                         logging.info(f"Correo enviado a {correo_destino} para código {codigo_archivo}")
                         return True, None
-                except smtplib.SMTPSenderRefused as e:
-                    detalles_error = f"Remitente rechazado: {e}"
+                        
+                except (smtplib.SMTPSenderRefused, smtplib.SMTPRecipientsRefused, 
+                        smtplib.SMTPDataError) as e:
+                    detalles_error = f"Error SMTP específico: {e}"
                     logging.error(detalles_error)
-                except smtplib.SMTPRecipientsRefused as e:
-                    detalles_error = f"Destinatario rechazado: {e}"
+                    
+                except (smtplib.SMTPConnectError, smtplib.SMTPServerDisconnected,
+                        socket.timeout, socket.error) as e:
+                    detalles_error = f"Error de conexión: {e}"
                     logging.error(detalles_error)
-                except smtplib.SMTPDataError as e:
-                    detalles_error = f"Error de datos SMTP: {e}"
-                    logging.error(detalles_error)
-                except smtplib.SMTPConnectError as e:
-                    detalles_error = f"Error de conexión con servidor SMTP: {e}"
-                    logging.error(detalles_error)
-                    # En caso de error de conexión con servidor, esperamos antes de reintentar
                     if not self.esperar_por_conexion(intento):
                         continue
-                except smtplib.SMTPServerDisconnected as e:
-                    detalles_error = f"Servidor SMTP desconectado: {e}"
-                    logging.error(detalles_error)
-                    # En caso de desconexión, esperamos antes de reintentar
-                    if not self.esperar_por_conexion(intento):
-                        continue
-                except smtplib.SMTPResponseException as e:
-                    detalles_error = f"Error de respuesta SMTP ({e.smtp_code}): {e.smtp_error}"
-                    logging.error(detalles_error)
+                        
                 except smtplib.SMTPAuthenticationError as e:
                     detalles_error = f"Error de autenticación SMTP: {e}"
                     logging.error(detalles_error)
-                    # Error de autenticación no debería reintentar, probablemente credenciales incorrectas
-                    return False, detalles_error
+                    return False, detalles_error  # No reintentar errores de autenticación
+                    
                 except smtplib.SMTPException as e:
                     detalles_error = f"Error SMTP general: {e}"
                     logging.error(detalles_error)
-                except socket.timeout as e:
-                    detalles_error = f"Tiempo de espera agotado en la conexión: {e}"
-                    logging.error(detalles_error)
-                    # En caso de timeout, esperamos antes de reintentar
-                    if not self.esperar_por_conexion(intento):
-                        continue
-                except socket.error as e:
-                    detalles_error = f"Error de socket/conexión: {e}"
-                    logging.error(detalles_error)
-                    # En caso de error de socket, esperamos antes de reintentar
-                    if not self.esperar_por_conexion(intento):
-                        continue
 
             except Exception as e:
                 detalles_error = f"Error inesperado enviando correo: {e}"
-                logging.error(f"{detalles_error}. Posible error de conexión")
+                logging.error(detalles_error)
                 
-                # Comprobar si el error parece relacionado con problemas de conexión
-                if any(texto in str(e).lower() for texto in ["timeout", "connection", "network", "socket", "unreachable", "route"]):
+                if any(texto in str(e).lower() for texto in ["timeout", "connection", "network", "socket"]):
                     if not self.esperar_por_conexion(intento):
                         continue
             
