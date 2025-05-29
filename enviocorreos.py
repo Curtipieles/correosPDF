@@ -10,7 +10,7 @@ import src.config as cfg
 
 # Configuración de logging unificada
 logging.getLogger('fontTools').setLevel(logging.WARNING)
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.CRITICAL, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class ProcesadorCorreos:
     def __init__(self, ruta_usuario, tamano_letra, estado_proceso):
