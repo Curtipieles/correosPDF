@@ -48,7 +48,7 @@ class ConversorPDF:
                 pdf.add_font(self.default_font['family'], '', source_pro_path, uni=True)
                 pdf.set_font(self.default_font['family'], size=font_size)
             
-            pdf.set_auto_page_break(True, margin=25)  # Activamos el salto automático con margen adecuado
+            pdf.set_auto_page_break(True, margin=25)
             pdf.add_page()
             
             # Si no se pudo añadir la fuente, usamos la fuente por defecto
@@ -60,7 +60,7 @@ class ConversorPDF:
             pdf.set_left_margin(margin_left)
             pdf.set_right_margin(pdf.w - margin_right)
             
-            pdf.set_y(34) # Posicionar correctamente después del encabezado
+            pdf.set_y(34)
             
             char_width = pdf.get_string_width("0")
             max_chars = int((margin_right - margin_left) / char_width)
@@ -69,16 +69,13 @@ class ConversorPDF:
             with open(ruta_archivo_txt, 'r', encoding='utf-8') as file:
                 lineas = file.readlines()
                 
-                # Calculamos el espacio disponible en la página
-                espacio_disponible = pdf.h - pdf.get_y() - 25  # Altura página - posición actual - margen pie
-                altura_linea = 5  # Altura de cada línea en mm
-                lineas_por_pagina = int(espacio_disponible / altura_linea)
+                altura_linea = 5
                 
                 for i, linea in enumerate(lineas):
                     # Verificar si queda suficiente espacio en la página actual
-                    if pdf.get_y() > (pdf.h - 25):  # Si estamos cerca del pie de página
+                    if pdf.get_y() > (pdf.h - 25):
                         pdf.add_page()
-                        pdf.set_y(34)  # Reiniciar posición en Y para la nueva página
+                        pdf.set_y(34)
                     
                     # Procesar la línea
                     linea_cortada = linea.rstrip('\n')[:max_chars]
@@ -100,9 +97,9 @@ class PDF(FPDF):
         super().__init__(*args, **kwargs)
         self.info_empresa = info_empresa
         self.tipo_empresa = info_empresa['tipo_empresa']
-        self.pie_pagina1 = info_empresa['pie_pagina1'] # Direccion
-        self.pie_pagina2 = info_empresa['pie_pagina2'] # Telefono
-        self.pie_pagina3 = info_empresa['pie_pagina3'] # Correo Empleado
+        self.pie_pagina1 = info_empresa['pie_pagina1']
+        self.pie_pagina2 = info_empresa['pie_pagina2']
+        self.pie_pagina3 = info_empresa['pie_pagina3']
         
     def header(self):
         logo_path = obtener_logo_por_empresa(self.tipo_empresa)
@@ -133,7 +130,7 @@ class PDF(FPDF):
         else:
             logging.warning(f"Logo no encontrado: {logo_path}")
         
-        self.set_y(y_pos + alto + 2) # Establece la posición Y después del logo
+        self.set_y(y_pos + alto + 2)
 
     def footer(self):
         self.set_y(-21)
@@ -150,7 +147,3 @@ class PDF(FPDF):
         texto_pie = f"{self.pie_pagina1} | {self.pie_pagina2} | {self.pie_pagina3}"
         self.set_x(margen)
         self.multi_cell(self.w - 2*margen, 4, texto_pie, align='C')
-    
-    def get_effective_height(self):
-        # Altura efectiva para el contenido (descontando encabezado y pie de página)
-        return self.h - 34 - 21  # Altura total - encabezado - pie de página
