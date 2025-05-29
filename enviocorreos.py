@@ -25,7 +25,7 @@ class ProcesadorCorreos:
         """Obtiene información de la empresa desde configuración"""
         info_empresa = cfg.obtener_info_empresa()
         if not info_empresa:
-            logging.error("No se pudo obtener información de empresa.txt")
+            logging.critical("No se pudo obtener información de empresa.txt")
             return None
         return info_empresa
     
@@ -41,7 +41,7 @@ class ProcesadorCorreos:
         """Actualiza el estado del archivo a enviado en el archivo de direcciones"""
         try:
             if not os.path.exists(cfg.ARCHIVO_DIRECCIONES):
-                logging.error(f"El archivo de direcciones no existe: {cfg.ARCHIVO_DIRECCIONES}")
+                logging.critical(f"El archivo de direcciones no existe: {cfg.ARCHIVO_DIRECCIONES}")
                 return False
                 
             with open(cfg.ARCHIVO_DIRECCIONES, 'r') as file:
@@ -69,7 +69,7 @@ class ProcesadorCorreos:
             archivos_pendientes = []
             
             if not os.path.exists(cfg.ARCHIVO_DIRECCIONES):
-                logging.warning("No existe el archivo de direcciones")
+                logging.critical("No existe el archivo de direcciones")
                 return []
                 
             with open(cfg.ARCHIVO_DIRECCIONES, 'r', encoding='utf-8') as f:
@@ -90,7 +90,7 @@ class ProcesadorCorreos:
             return archivos_pendientes
                 
         except Exception as e:
-            logging.error(f"Error al obtener archivos pendientes: {e}")
+            logging.critical(f"Error al obtener archivos pendientes: {e}")
             return []
     
     def _generar_estado_error(self, nombre_base, mensaje_error, pdf_path=None):
@@ -100,7 +100,6 @@ class ProcesadorCorreos:
             "ERROR", 
             mensaje_error, 
             pdf_path, 
-            self.info_empresa['correo_origen'] if self.info_empresa else None
         )
     
     def procesar_archivo(self, nombre_archivo):
@@ -122,7 +121,6 @@ class ProcesadorCorreos:
                     "OMITIDO", 
                     "Archivo no está en la lista de pendientes", 
                     None, 
-                    self.info_empresa['correo_origen']
                 )
                 return True
                 
@@ -137,10 +135,11 @@ class ProcesadorCorreos:
             # Convertir a PDF
             try:
                 conversor = ConversorPDF()
-                pdf_path = conversor.convertir_a_pdf(self.ruta_usuario, nombre_base, self.tamano_letra)
+                pdf_path, detalle = conversor.convertir_a_pdf(self.ruta_usuario, nombre_base, self.tamano_letra)
                 
                 if not pdf_path:
-                    self._generar_estado_error(nombre_base, f"No se pudo generar el PDF para {nombre_archivo}")
+                    mensaje_error = detalle if detalle else f"No se pudo generar el PDF para {nombre_archivo}"
+                    self._generar_estado_error(nombre_base, mensaje_error)
                     return False
                 
                 logging.info(f"PDF generado: {pdf_path}")
@@ -165,7 +164,6 @@ class ProcesadorCorreos:
                     estado_correo, 
                     detalle, 
                     pdf_path, 
-                    self.info_empresa['correo_origen']
                 )
                 
                 return exito
@@ -184,7 +182,7 @@ class ProcesadorCorreos:
         try:
             # Validar directorio de entrada
             if not os.path.exists(self.entrada_dir):
-                logging.error(f"El directorio de entrada no existe: {self.entrada_dir}")
+                logging.critical(f"El directorio de entrada no existe: {self.entrada_dir}")
                 return False
                 
             archivos = [f for f in os.listdir(self.entrada_dir) if f.endswith('.txt')]
@@ -211,7 +209,6 @@ class ProcesadorCorreos:
                             "OMITIDO", 
                             "Archivo no está en la lista de pendientes (filtrado inicial)", 
                             None, 
-                            self.info_empresa['correo_origen']
                         )
                 
                 logging.info(f"Archivos pendientes a procesar: {len(archivos)}")
@@ -242,14 +239,13 @@ class ProcesadorCorreos:
             return True
             
         except Exception as e:
-            logging.error(f"Error al procesar archivos: {e}")
+            logging.critical(f"Error al procesar archivos: {e}")
             if self.info_empresa:
                 EstadoCorreo.generar_estado(
                     "proceso_general", 
                     "ERROR", 
                     f"Error general en procesar_todos: {str(e)}", 
-                    None, 
-                    self.info_empresa['correo_origen']
+                    None,
                 )
             return False
 
@@ -258,22 +254,22 @@ def main():
     try:
         # Validar argumentos
         if len(sys.argv) != 4:
-            logging.error("Argumentos incorrectos. Uso: python main.py <ruta_usuario> <tamano_letra> <estado_proceso>")
+            logging.critical("Argumentos incorrectos. Uso: python main.py <ruta_usuario> <tamano_letra> <estado_proceso>")
             sys.exit(1)
             
         ruta_usuario, tamano_letra, estado_proceso = sys.argv[1], sys.argv[2], sys.argv[3]
         
         # Validaciones de entrada
         if not os.path.exists(ruta_usuario):
-            logging.error(f"La ruta '{ruta_usuario}' no existe")
+            logging.critical(f"La ruta '{ruta_usuario}' no existe")
             sys.exit(1)
             
         if tamano_letra not in ['P', 'N']:
-            logging.error(f"Tamaño de letra inválido: '{tamano_letra}'. Debe ser 'P' o 'N'")
+            logging.critical(f"Tamaño de letra inválido: '{tamano_letra}'. Debe ser 'P' o 'N'")
             sys.exit(1)
 
         if estado_proceso not in ['0', '1']:
-            logging.error(f"Estado del proceso inválido: '{estado_proceso}'. Debe ser '0' o '1'")
+            logging.critical(f"Estado del proceso inválido: '{estado_proceso}'. Debe ser '0' o '1'")
             sys.exit(1)
 
         # Ejecutar procesamiento
@@ -283,7 +279,7 @@ def main():
         sys.exit(0 if resultado else 1)
 
     except Exception as e:
-        logging.error(f"Error en ejecución principal: {e}")
+        logging.critical(f"Error en ejecución principal: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":
