@@ -13,7 +13,6 @@ class EstadoCorreo:
     def verificar_estado_red():
         """Verifica el estado de la conexión de red de forma simplificada"""
         info_red = {}
-        
         # Verificar conexión a internet
         try:
             socket.create_connection(("8.8.8.8", 53), timeout=3)
@@ -43,29 +42,50 @@ class EstadoCorreo:
         return info_red
 
     @staticmethod
-    def generar_diagnostico(detalles_error, correo_destino=None):
-        """Generar diagnóstico que incluye validación de dominios"""
-        # Si no hay errores Y hay correo destino, validar dominio
-        if correo_destino and (not detalles_error or detalles_error == "No hay detalles de error"):
-            es_sospechoso, mensaje_dominio = EstadoCorreo.validar_dominio_correo(correo_destino)
-            if es_sospechoso:
-                return mensaje_dominio
-        
-        # Si no hay errores y el dominio está bien
-        if not detalles_error:
+    def generar_diagnostico(detalles_error):
+        """Generar diagnóstico basado en los detalles del error"""
+        if not detalles_error or detalles_error == "No hay detalles de error":
             return "No se detectaron errores"
         
-        # Diagnosticar errores comunes
         detalles_lower = detalles_error.lower()
         
         diagnosticos = {
-            "timeout|tiempo|agotado": "Tiempo de espera agotado. Posible conexión lenta o inestable.",
-            "connection|conexión|socket|network|red": "Problema de conexión a internet o red inestable.",
-            "refused|rechazado|unreachable": "Conexión rechazada. Posible bloqueo por firewall o servidor caído.",
-            "autenticación|authentication|login|password": "Error de autenticación. Revisar credenciales de correo.",
-            "smtp": "Error en el servidor SMTP de correo.",
-            "archivo|file|no encontrado|not found": "Error con el archivo o su ubicación.",
-            "omitido": "Archivo omitido del procesamiento según criterios de filtrado."
+            "correo de cliente inválido|cliente inválido": "Correo electrónico del cliente inválido o no encontrado.",
+            "correo de usuario inválido|usuario inválido": "Correo electrónico del usuario en configuración inválido.",
+            "sin conexión a internet": "Sin conexión a internet disponible.",
+            "tiempo de espera agotado": "Tiempo de espera agotado. Posible conexión lenta o inestable.",
+            "error de autenticación smtp|smtpauthenticationerror": "Credenciales de correo incorrectas.",
+            "smtpsenderrefused|smtprecipientsrefused": "Dirección de correo rechazada por el servidor.",
+            "smtpconnecterror|smtpserverdisconnected": "No se pudo conectar al servidor de correo.",
+            "smtpdataerror": "Error al enviar los datos del correo al servidor.",
+            "smtp": "Error general en el servidor SMTP de correo.",
+            "error de conexión": "Problema de conexión de red.",
+            "conexión rechazada": "Conexión rechazada. Posible bloqueo por firewall o servidor caído.",
+            "socket.timeout": "Tiempo de conexión agotado.",
+            "socket.error": "Error de socket de red.",
+            "filenotfounderror|archivo no encontrado": "Archivo PDF no encontrado en la ruta especificada.",
+            "permissionerror": "Sin permisos para acceder al archivo PDF.",
+            "pdf no encontrado": "Archivo PDF no localizado.",
+            "omitido": "Archivo omitido del procesamiento según criterios de filtrado.",
+            "se agotaron los": "Se agotaron todos los intentos de envío.",
+            "no se pudo generar el pdf|error generando pdf": "Error al generar el archivo PDF.",
+            "archivo de entrada no encontrado": "Archivo de texto de entrada no encontrado.",
+            "sin permisos de lectura sobre archivo": "Sin permisos para leer el archivo de entrada.",
+            "no se pudo obtener información de la empresa": "Error en configuración de empresa.",
+            "no se pudo crear directorio de pdfs": "Error al crear carpeta de archivos PDF.",
+            "error al inicializar objeto pdf": "Error interno al crear documento PDF.",
+            "archivo de fuente no encontrado": "Fuente tipográfica no disponible, usando fuente por defecto.",
+            "error al cargar fuente personalizada": "Problema con fuente tipográfica, usando fuente por defecto.",
+            "error al agregar página": "Error al crear páginas en el documento PDF.",
+            "error al configurar fuente": "Error al configurar tipografía del documento.",
+            "error al calcular ancho de caracteres": "Error en configuración de formato del texto.",
+            "error de codificación al leer archivo": "Problema de codificación en archivo de texto de entrada.",
+            "error al leer archivo de texto": "No se pudo leer el archivo de texto de entrada.",
+            "error al escribir contenido en pdf": "Error al escribir el contenido en el documento PDF.",
+            "error al generar archivo pdf": "Error al finalizar la creación del archivo PDF.",
+            "el archivo pdf no se generó correctamente": "El archivo PDF no se creó o está dañado.",
+            "el archivo pdf generado está vacío": "El archivo PDF se creó pero no tiene contenido.",
+            "error inesperado generando pdf": "Error desconocido durante la generación del PDF."
         }
         
         for palabras_clave, diagnostico in diagnosticos.items():
@@ -73,33 +93,9 @@ class EstadoCorreo:
                 return diagnostico
         
         return "Error desconocido"
-    
-    @staticmethod
-    def validar_dominio_correo(correo_destino):
-        """Valida si el dominio del correo tiene errores tipográficos comunes"""
-        if not correo_destino or '@' not in correo_destino:
-            return False, None
-        
-        dominio = correo_destino.split('@')[1].lower()
-        
-        # Dominios populares y sus variantes tipográficas comunes
-        dominios_populares = {
-            'gmail.com': ['gmai.com', 'gmial.com', 'gmail.co', 'gmal.com', 'gmil.com', 'gmail.con'],
-            'hotmail.com': ['hotmai.com', 'hotmial.com', 'hotmal.com', 'hotmil.com', 'hotmail.co'],
-            'outlook.com': ['outlok.com', 'outloo.com', 'outlook.co', 'outluk.com'],
-            'yahoo.com': ['yaho.com', 'yahoo.co', 'yhoo.com', 'yahu.com'],
-            'icloud.com': ['iclod.com', 'icloud.co', 'icoud.com'],
-            'live.com': ['liv.com', 'live.co', 'liev.com']
-        }
-        
-        for dominio_correcto, variantes in dominios_populares.items():
-            if dominio in variantes:
-                return True, f"Posible error tipográfico en dominio. ¿Quiso decir '{dominio_correcto}'?"
-        
-        return False, None
 
     @staticmethod
-    def generar_estado(codigo_archivo, estado="ERROR", detalles_error=None, pdf_path=None, correo_origen=None):
+    def generar_estado(codigo_archivo, estado="ERROR", detalles_error=None, pdf_path=None):
         try:
             if not codigo_archivo:
                 logging.error("No se proporcionó un código de archivo válido")
@@ -110,7 +106,7 @@ class EstadoCorreo:
             correo_destino = enviador.obtener_correo_por_codigo(codigo_archivo)
             id_transaccion = str(uuid.uuid4())[:8]
             
-            diagnostico = EstadoCorreo.generar_diagnostico(detalles_error, correo_destino)
+            diagnostico = EstadoCorreo.generar_diagnostico(detalles_error)
             
             # Obtener información de red solo si hay error
             info_red = {}
@@ -153,7 +149,6 @@ class EstadoCorreo:
             
             registro_detallado += (
                 f"Ruta PDF: {pdf_path if pdf_path else 'No se encontró la ruta del PDF'}\n"
-                f"Correo origen: {correo_origen if correo_origen else 'N/A'}\n"
                 f"Tamaño PDF: {tamano_pdf}\n"
                 f"ID transacción: {id_transaccion}\n"
                 f"Sistema: {hostname} - {sistema_operativo}\n"

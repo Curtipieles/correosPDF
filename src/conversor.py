@@ -17,80 +17,155 @@ class ConversorPDF:
     def validar_archivo(self, ruta_usuario, nombre_archivo):
         ruta_archivo = os.path.normpath(os.path.join(ruta_usuario, 'entrada', f'{nombre_archivo}.txt'))
         if not os.path.exists(ruta_archivo):
-            logging.error(f"Archivo no encontrado: {ruta_archivo}")
-            return False
+            error_msg = f"Archivo de entrada no encontrado: {ruta_archivo}"
+            logging.error(error_msg)
+            return False, error_msg
         if not os.access(ruta_archivo, os.R_OK):
-            logging.error(f"Sin permisos de lectura: {ruta_archivo}")
-            return False
-        return True
+            error_msg = f"Sin permisos de lectura sobre archivo de entrada: {ruta_archivo}"
+            logging.error(error_msg)
+            return False, error_msg
+        return True, None
  
     def convertir_a_pdf(self, ruta_usuario, nombre_archivo, tamano_letra):
         try:
-            if not self.validar_archivo(ruta_usuario, nombre_archivo):
-                return None
+            # Validar archivo de entrada
+            archivo_valido, error_validacion = self.validar_archivo(ruta_usuario, nombre_archivo)
+            if not archivo_valido:
+                return None, error_validacion
 
+            # Obtener información de empresa
             info_empresa = obtener_info_empresa()
             if not info_empresa:
-                logging.error("No se pudo obtener información de la empresa")
-                return None
+                error_msg = "No se pudo obtener información de la empresa desde configuración"
+                logging.error(error_msg)
+                return None, error_msg
 
-            os.makedirs(PDF_DIR, exist_ok=True)
+            # Crear directorio de PDFs
+            try:
+                os.makedirs(PDF_DIR, exist_ok=True)
+            except Exception as e:
+                error_msg = f"No se pudo crear directorio de PDFs: {str(e)}"
+                logging.error(error_msg)
+                return None, error_msg
+            
             font_size = 9 if tamano_letra == 'N' else 8
             
-            pdf = PDF(info_empresa)
+            try:
+                pdf = PDF(info_empresa)
+            except Exception as e:
+                error_msg = f"Error al inicializar objeto PDF: {str(e)}"
+                logging.error(error_msg)
+                return None, error_msg
+                
             source_pro_path = os.path.normpath(os.path.join(self.fonts_dir, self.default_font['file']))
 
+            # Configurar fuente
+            fuente_personalizada = False
             if not os.path.exists(source_pro_path):
-                logging.error(f"Archivo de fuente no encontrado: {source_pro_path}")
+                logging.warning(f"Archivo de fuente no encontrado: {source_pro_path}")
                 logging.warning("Usando fuente por defecto del sistema")
             else:
-                # Solo añadimos la fuente si el archivo existe
-                pdf.add_font(self.default_font['family'], '', source_pro_path, uni=True)
-                pdf.set_font(self.default_font['family'], size=font_size)
+                try:
+                    pdf.add_font(self.default_font['family'], '', source_pro_path, uni=True)
+                    pdf.set_font(self.default_font['family'], size=font_size)
+                    fuente_personalizada = True
+                except Exception as e:
+                    error_msg = f"Error al cargar fuente personalizada: {str(e)}"
+                    logging.warning(error_msg)
+                    logging.warning("Continuando con fuente por defecto")
             
             pdf.set_auto_page_break(True, margin=25)
-            pdf.add_page()
             
-            # Si no se pudo añadir la fuente, usamos la fuente por defecto
-            if not os.path.exists(source_pro_path):
-                pdf.set_font("", size=font_size)
+            try:
+                pdf.add_page()
+            except Exception as e:
+                error_msg = f"Error al agregar página inicial: {str(e)}"
+                logging.error(error_msg)
+                return None, error_msg
+            
+            # Si no se pudo añadir la fuente personalizada, usar fuente por defecto
+            if not fuente_personalizada:
+                try:
+                    pdf.set_font("Arial", size=font_size)
+                except Exception as e:
+                    error_msg = f"Error al configurar fuente por defecto: {str(e)}"
+                    logging.error(error_msg)
+                    return None, error_msg
             
             margin_left = 14
             margin_right = 195
             pdf.set_left_margin(margin_left)
             pdf.set_right_margin(pdf.w - margin_right)
-            
             pdf.set_y(34)
             
-            char_width = pdf.get_string_width("0")
-            max_chars = int((margin_right - margin_left) / char_width)
+            try:
+                char_width = pdf.get_string_width("0")
+                max_chars = int((margin_right - margin_left) / char_width)
+            except Exception as e:
+                error_msg = f"Error al calcular ancho de caracteres: {str(e)}"
+                logging.error(error_msg)
+                return None, error_msg
             
+            # Leer y procesar archivo de texto
             ruta_archivo_txt = os.path.normpath(os.path.join(ruta_usuario, 'entrada', f'{nombre_archivo}.txt'))
-            with open(ruta_archivo_txt, 'r', encoding='utf-8') as file:
-                lineas = file.readlines()
+            try:
+                with open(ruta_archivo_txt, 'r', encoding='utf-8') as file:
+                    lineas = file.readlines()
+            except UnicodeDecodeError as e:
+                error_msg = f"Error de codificación al leer archivo de texto: {str(e)}"
+                logging.error(error_msg)
+                return None, error_msg
+            except Exception as e:
+                error_msg = f"Error al leer archivo de texto: {str(e)}"
+                logging.error(error_msg)
+                return None, error_msg
                 
-                altura_linea = 5
-                
+            altura_linea = 5
+            
+            try:
                 for i, linea in enumerate(lineas):
                     # Verificar si queda suficiente espacio en la página actual
                     if pdf.get_y() > (pdf.h - 25):
                         pdf.add_page()
                         pdf.set_y(34)
-                    
                     # Procesar la línea
                     linea_cortada = linea.rstrip('\n')[:max_chars]
                     pdf.write(altura_linea, linea_cortada)
                     pdf.ln()
+            except Exception as e:
+                error_msg = f"Error al escribir contenido en PDF (línea {i+1}): {str(e)}"
+                logging.error(error_msg)
+                return None, error_msg
             
+            # Generar archivo PDF
             nombre_pdf = f'{nombre_archivo}.pdf'
             ruta_completa_pdf = os.path.normpath(os.path.join(PDF_DIR, nombre_pdf))
-            pdf.output(ruta_completa_pdf)
-            logging.info(f"PDF generado: {ruta_completa_pdf}")
-            return ruta_completa_pdf
+            
+            try:
+                pdf.output(ruta_completa_pdf)
+            except Exception as e:
+                error_msg = f"Error al generar archivo PDF: {str(e)}"
+                logging.error(error_msg)
+                return None, error_msg
+                
+            # Verificar que el archivo se creó correctamente
+            if not os.path.exists(ruta_completa_pdf):
+                error_msg = f"El archivo PDF no se generó correctamente: {ruta_completa_pdf}"
+                logging.error(error_msg)
+                return None, error_msg
+                
+            if os.path.getsize(ruta_completa_pdf) == 0:
+                error_msg = f"El archivo PDF generado está vacío: {ruta_completa_pdf}"
+                logging.error(error_msg)
+                return None, error_msg
+                
+            logging.info(f"PDF generado exitosamente: {ruta_completa_pdf}")
+            return ruta_completa_pdf, None
 
         except Exception as e:
-            logging.error(f"Error generando PDF: {e}")
-            return None
+            error_msg = f"Error inesperado generando PDF: {str(e)}"
+            logging.error(error_msg)
+            return None, error_msg
 
 class PDF(FPDF):
     def __init__(self, info_empresa, *args, **kwargs):
@@ -102,48 +177,54 @@ class PDF(FPDF):
         self.pie_pagina3 = info_empresa['pie_pagina3']
         
     def header(self):
-        logo_path = obtener_logo_por_empresa(self.tipo_empresa)
-        y_pos, alto = 8, 20
-        
-        if self.tipo_empresa == 'COM':
-            ancho = 208
-            alto = 26
-            y_pos = 8
-            x_pos = (self.w - ancho) / 2
-        elif self.tipo_empresa == 'CUR':
-            ancho = 130
-            alto = 26
-            y_pos = 8
-            x_pos = 14
-        elif self.tipo_empresa == 'LBC':
-            ancho = 160
-            alto = 26
-            y_pos = 10
-            x_pos = (self.w - ancho) / 2
-        else:
-            ancho = 120
-            x_pos = (self.w - ancho) / 2
-        
-        if os.path.exists(logo_path):
-            logging.info(f"Insertando logo {logo_path} en posición: x={x_pos}, y={y_pos}")
-            self.image(logo_path, x=x_pos, y=y_pos, w=ancho, h=alto)
-        else:
-            logging.warning(f"Logo no encontrado: {logo_path}")
-        
-        self.set_y(y_pos + alto + 2)
+        try:
+            logo_path = obtener_logo_por_empresa(self.tipo_empresa)
+            y_pos, alto = 8, 20
+            
+            if self.tipo_empresa == 'COM':
+                ancho = 208
+                alto = 26
+                y_pos = 8
+                x_pos = (self.w - ancho) / 2
+            elif self.tipo_empresa == 'CUR':
+                ancho = 130
+                alto = 26
+                y_pos = 8
+                x_pos = 14
+            elif self.tipo_empresa == 'LBC':
+                ancho = 160
+                alto = 26
+                y_pos = 10
+                x_pos = (self.w - ancho) / 2
+            else:
+                ancho = 120
+                x_pos = (self.w - ancho) / 2
+            
+            if os.path.exists(logo_path):
+                logging.info(f"Insertando logo {logo_path} en posición: x={x_pos}, y={y_pos}")
+                self.image(logo_path, x=x_pos, y=y_pos, w=ancho, h=alto)
+            else:
+                logging.warning(f"Logo no encontrado: {logo_path}")
+            
+            self.set_y(y_pos + alto + 2)
+        except Exception as e:
+            logging.error(f"Error en header del PDF: {str(e)}")
 
     def footer(self):
-        self.set_y(-21)
-        self.set_font("Helvetica", '', 10)
-        self.cell(0, 4, "Excelencia desde el origen hasta el producto final", ln=True, align='C')
-        
-        margen = 15
-        posicion_inicial = margen
-        posicion_final = self.w - margen
-        self.line(posicion_inicial, self.get_y() + 2, posicion_final, self.get_y() + 2)
-        self.ln(4)
-        
-        self.set_font("Helvetica", "", 8)
-        texto_pie = f"{self.pie_pagina1} | {self.pie_pagina2} | {self.pie_pagina3}"
-        self.set_x(margen)
-        self.multi_cell(self.w - 2*margen, 4, texto_pie, align='C')
+        try:
+            self.set_y(-21)
+            self.set_font("Helvetica", '', 10)
+            self.cell(0, 4, "Excelencia desde el origen hasta el producto final", ln=True, align='C')
+            
+            margen = 15
+            posicion_inicial = margen
+            posicion_final = self.w - margen
+            self.line(posicion_inicial, self.get_y() + 2, posicion_final, self.get_y() + 2)
+            self.ln(4)
+            
+            self.set_font("Helvetica", "", 8)
+            texto_pie = f"{self.pie_pagina1} | {self.pie_pagina2} | {self.pie_pagina3}"
+            self.set_x(margen)
+            self.multi_cell(self.w - 2*margen, 4, texto_pie, align='C')
+        except Exception as e:
+            logging.error(f"Error en footer del PDF: {str(e)}")

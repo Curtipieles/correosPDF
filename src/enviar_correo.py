@@ -187,7 +187,7 @@ class EnviadorCorreo:
         correo_destino, correo_usuario_valido = self.es_email_valido(self.correo_cliente, self.correo_usuario)
         
         if not correo_destino:
-            detalles_error = f"Correo de cliente inválido o no encontrado para {codigo_archivo}"
+            detalles_error = f"Correo de cliente inválido o no encontrado para {codigo_archivo}. El correo no está en la libreta de direcciones generada por MAX. Consulte direcciones.txt en el directorio origen de su usuario."
             logging.error(detalles_error)
             return False, detalles_error
             
