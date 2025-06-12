@@ -81,8 +81,8 @@ def obtener_info_empresa():
         with open(ARCHIVO_EMPRESA, 'r', encoding='utf-8') as f:
             lineas = f.readlines()
             
-        if len(lineas) < 7:
-            logging.error("El archivo empresa.txt no tiene suficientes líneas de configuración")
+        if len(lineas) < 8:
+            logging.critical("El archivo empresa.txt no tiene suficientes líneas de configuración")
             return None
             
         return {
@@ -92,7 +92,8 @@ def obtener_info_empresa():
             'pie_pagina1': lineas[3].strip(), # Direccion
             'pie_pagina2': lineas[4].strip(), # Telefono
             'pie_pagina3': lineas[5].strip(), # Email
-            'estado_proceso': lineas[6].strip()
+            'estado_proceso': lineas[6].strip(),
+            'membrete': lineas[7].strip()
         }
     except Exception as e:
         logging.error(f"Error al leer archivo empresa.txt: {e}")

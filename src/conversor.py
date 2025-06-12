@@ -74,7 +74,8 @@ class ConversorPDF:
                     logging.warning(error_msg)
                     logging.warning("Continuando con fuente por defecto")
             
-            pdf.set_auto_page_break(True, margin=25)
+            # Configurar márgenes automáticamente según membrete
+            pdf.set_auto_page_break(True, margin=pdf.margen_inferior)
             
             try:
                 pdf.add_page()
@@ -96,7 +97,8 @@ class ConversorPDF:
             margin_right = 195
             pdf.set_left_margin(margin_left)
             pdf.set_right_margin(pdf.w - margin_right)
-            pdf.set_y(34)
+            # Posición inicial automática según membrete
+            pdf.set_y(pdf.posicion_inicial_y)
             
             try:
                 char_width = pdf.get_string_width("0")
@@ -124,10 +126,10 @@ class ConversorPDF:
             
             try:
                 for i, linea in enumerate(lineas):
-                    # Verificar si queda suficiente espacio en la página actual
-                    if pdf.get_y() > (pdf.h - 25):
+                    # Verificar espacio disponible con margen automático
+                    if pdf.get_y() > (pdf.h - pdf.margen_inferior):
                         pdf.add_page()
-                        pdf.set_y(34)
+                        pdf.set_y(pdf.posicion_inicial_y)
                     # Procesar la línea
                     linea_cortada = linea.rstrip('\n')[:max_chars]
                     pdf.write(altura_linea, linea_cortada)
@@ -176,7 +178,22 @@ class PDF(FPDF):
         self.pie_pagina2 = info_empresa['pie_pagina2']
         self.pie_pagina3 = info_empresa['pie_pagina3']
         
+        # Configuración automática de espacios según membrete
+        self.mostrar_membrete = info_empresa['membrete'].upper() in ['S']
+        
+        if self.mostrar_membrete:
+            # Con membrete: espacios normales
+            self.posicion_inicial_y = 34
+            self.margen_inferior = 25
+        else:
+            # Sin membrete: aprovecha todo el espacio
+            self.posicion_inicial_y = 1
+            self.margen_inferior = 0
+        
     def header(self):
+        if not self.mostrar_membrete:
+            return
+            
         try:
             logo_path = obtener_logo_por_empresa(self.tipo_empresa)
             y_pos, alto = 8, 20
@@ -211,6 +228,9 @@ class PDF(FPDF):
             logging.error(f"Error en header del PDF: {str(e)}")
 
     def footer(self):
+        if not self.mostrar_membrete:
+            return
+            
         try:
             self.set_y(-21)
             self.set_font("Helvetica", '', 10)
