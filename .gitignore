@@ -6,6 +6,6 @@ env/
 .venv/
 ENV/
 /data
-correospdf.spec
+enviocorreos.spec
 build/
 data/

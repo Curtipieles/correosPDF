@@ -51,7 +51,7 @@ class EnviadorCorreo:
         ]
 
     def _obtener_config_empresa(self):
-        """Retorna la configuración de la empresa según el tipo"""
+        """Retorna el estilo de la empresa según el tipo"""
         configs = {
             'CUR': {
                 'color_encabezado': '#4a2511',
@@ -77,8 +77,8 @@ class EnviadorCorreo:
         }
         
         return configs.get(self.tipo_empresa, {
-            'color_encabezado': '#333333',
-            'nombre_empresa': 'Empresa S.A.S',
+            'color_encabezado': "#5C9DF1",
+            'nombre_empresa': 'Empresa',
             'color_banner': '#f5f5f5',
             'color_borde': '#e0e0e0',
             'color_texto': '#555555'
@@ -123,7 +123,6 @@ class EnviadorCorreo:
     def es_email_valido(email_a, email_b):
         # Patrón regex para validar email
         patron_email = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        
         # Verificar que ambos emails existan y sean strings
         if not email_a or not email_b or not isinstance(email_a, str) or not isinstance(email_b, str):
             return None, None
@@ -131,11 +130,9 @@ class EnviadorCorreo:
         # Limpiar espacios
         email_a = email_a.strip()
         email_b = email_b.strip()
-        
         # Validar ambos emails con regex
         email_a_valido = re.match(patron_email, email_a) is not None
         email_b_valido = re.match(patron_email, email_b) is not None
-        
         # Retornar emails válidos o None si no son válidos
         return (email_a if email_a_valido else None, 
                 email_b if email_b_valido else None)
@@ -243,10 +240,9 @@ class EnviadorCorreo:
                 unsubscribe_email = 'unsubscribe@' + domain
                 msg['List-Unsubscribe'] = f"<mailto:{unsubscribe_email}?subject=unsubscribe-{codigo_archivo}>"
                 msg['List-Unsubscribe-Post'] = "List-Unsubscribe=One-Click"
-                
                 empresa_codigo = self.tipo_empresa.lower()
                 msg['Feedback-ID'] = f"{empresa_codigo}:{codigo_archivo}:{time.strftime('%Y%m')}"
-                
+
                 # Texto plano
                 texto_plano = self._limpiar_texto_html(cuerpo)
                 texto_plano += f"\n\n{frase_aleatoria}\n\n---\n{self.nombre_empresa}\nDirección: {self.direccion}\nTeléfono: {self.telefono}\n\nPara darse de baja, responda a este correo con el asunto 'unsubscribe'"
@@ -365,5 +361,4 @@ class EnviadorCorreo:
                 mensaje_final = f"Se agotaron los {self.max_intentos} intentos de envío para {codigo_archivo}. Último error: {detalles_error}"
                 logging.error(mensaje_final)
                 return False, detalles_error
-
         return False, detalles_error

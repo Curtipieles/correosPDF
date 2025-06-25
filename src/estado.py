@@ -160,9 +160,9 @@ class EstadoCorreo:
             
             # Actualizar registro general
             estado_correos_path = os.path.join(ESTADO_DIR, "estado_correos.txt")
-            encabezado = " ARCHIVO    || FECHA ENVÍO         || ESTADO  || DIAGNÓSTICO\n"
+            encabezado = " ARCHIVO             || FECHA ENVÍO         || ESTADO  || DIAGNÓSTICO\n"
             separador = "=" * 100 + "\n"
-            nuevo_registro = f"{codigo_archivo.ljust(10)} || {timestamp} || {estado.ljust(8)} || {diagnostico}\n"
+            nuevo_registro = f"{codigo_archivo.ljust(20)} || {timestamp} || {estado.ljust(8)} || {diagnostico}\n"
             
             registros_acumulados = []
             
