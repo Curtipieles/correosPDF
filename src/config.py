@@ -81,8 +81,8 @@ def obtener_info_empresa():
         with open(ARCHIVO_EMPRESA, 'r', encoding='utf-8') as f:
             lineas = f.readlines()
             
-        if len(lineas) < 7:
-            logging.error("El archivo empresa.txt no tiene suficientes líneas de configuración")
+        if len(lineas) < 8:
+            logging.critical("El archivo empresa.txt no tiene suficientes líneas de configuración")
             return None
             
         return {
@@ -92,7 +92,8 @@ def obtener_info_empresa():
             'pie_pagina1': lineas[3].strip(), # Direccion
             'pie_pagina2': lineas[4].strip(), # Telefono
             'pie_pagina3': lineas[5].strip(), # Email
-            'estado_proceso': lineas[6].strip()
+            'estado_proceso': lineas[6].strip(),
+            'membrete': lineas[7].strip()
         }
     except Exception as e:
         logging.error(f"Error al leer archivo empresa.txt: {e}")
@@ -125,13 +126,21 @@ def actualizar_estado_proceso(nuevo_estado='0'):
         logging.error(f"Error al actualizar estado en empresa.txt: {e}")
         return False
 
-def obtener_logo_por_empresa(tipo_empresa):
-    if tipo_empresa == 'CUR':
-        return LOGO_EMPRESA_CURTI
-    elif tipo_empresa == 'LBC':
-        return LOGO_EMPRESA_LBC
-    elif tipo_empresa == 'COM':
-        return LOGO_EMPRESA_COMER
-    else:
-        logging.warning(f"Tipo de empresa desconocido: {tipo_empresa}, usando logo CURTI por defecto")
-        return LOGO_EMPRESA_CURTI
+# Configuración de empresas centralizada
+EMPRESAS_CONFIG = {
+    'CUR': {
+        'nombre_completo': 'CURTIPIELES S.A.S.',
+        'logo_file': 'logo_curti.JPG',
+        'nit': '800.123.456-7'
+    },
+    'LBC': {
+        'nombre_completo': 'LUIS BERNARDO CALLE PAREJA',
+        'logo_file': 'logo_lbc.JPG', 
+        'nit': '900.123.456-8'
+    },
+    'COM': {
+        'nombre_completo': 'COMERCIALIZADORA CURTI S.A.S.',
+        'logo_file': 'logo_comer.JPG',
+        'nit': '700.123.456-9'
+    }
+}
