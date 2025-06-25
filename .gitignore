@@ -9,3 +9,4 @@ ENV/
 enviocorreos.spec
 build/
 data/
+dist/

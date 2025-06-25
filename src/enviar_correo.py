@@ -34,7 +34,7 @@ class EnviadorCorreo:
         self.color_borde = self.config_empresa['color_borde']
         self.color_texto = self.config_empresa['color_texto']
         self.direccion = self.info_empresa.get('pie_pagina1', 'Cl. 8 #20-15, El Cerrito, Valle del Cauca, Colombia')
-        self.telefono = self.info_empresa.get('pie_pagina2', '+57 3173711707')
+        self.telefono = self.info_empresa.get('pie_pagina2', 'No es posible acceder al servicio de telefono en este instante.')
         self.correo = self.info_empresa.get('pie_pagina3', 'No es posible acceder al servicio de correo en este instante.')
         
         # Frases de cierre simplificadas
@@ -216,7 +216,7 @@ class EnviadorCorreo:
                 frase_aleatoria = self._obtener_frase_aleatoria()
 
                 msg = MIMEMultipart('alternative')
-                msg['From'] = formataddr((self.nombre_empresa, correo_usuario_valido))
+                msg['From'] = formataddr((self.correo, correo_usuario_valido))
                 msg['To'] = correo_destino
                 msg['Subject'] = asunto
                 
