@@ -1,7 +1,21 @@
 import os
 import logging
 from fpdf import FPDF
-from src.config import PDF_DIR, obtener_info_empresa, obtener_logo_por_empresa
+from src.config import PDF_DIR, BASE_DIR, EMPRESAS_CONFIG, obtener_info_empresa
+
+def obtener_info_empresa_completa(tipo_empresa):
+        try:  
+            if tipo_empresa in EMPRESAS_CONFIG:
+                return EMPRESAS_CONFIG[tipo_empresa]
+            else:
+                # Retorna información genérica si no encuentra la empresa
+                return {
+                    'nombre_completo': f'EMPRESA',
+                    'logo_file': None,
+                    'nit': 'N/A'
+                }
+        except Exception as e:
+            logging.error(f"Error al obtener la informacion de la empresa: {str(e)}")
 
 class ConversorPDF:
     def __init__(self):
@@ -25,7 +39,7 @@ class ConversorPDF:
             logging.error(error_msg)
             return False, error_msg
         return True, None
- 
+
     def convertir_a_pdf(self, ruta_usuario, nombre_archivo, tamano_letra):
         try:
             # Validar archivo de entrada
@@ -174,6 +188,10 @@ class PDF(FPDF):
         super().__init__(*args, **kwargs)
         self.info_empresa = info_empresa
         self.tipo_empresa = info_empresa['tipo_empresa']
+
+        # Obtener información completa de la empresa
+        self.empresa_info = obtener_info_empresa_completa(self.tipo_empresa)
+
         self.pie_pagina1 = info_empresa['pie_pagina1']
         self.pie_pagina2 = info_empresa['pie_pagina2']
         self.pie_pagina3 = info_empresa['pie_pagina3']
@@ -195,37 +213,55 @@ class PDF(FPDF):
             return
             
         try:
-            logo_path = obtener_logo_por_empresa(self.tipo_empresa)
-            y_pos, alto = 8, 20
-            
-            if self.tipo_empresa == 'COM':
-                ancho = 208
-                alto = 26
-                y_pos = 8
-                x_pos = (self.w - ancho) / 2
-            elif self.tipo_empresa == 'CUR':
-                ancho = 130
-                alto = 26
-                y_pos = 8
-                x_pos = 14
-            elif self.tipo_empresa == 'LBC':
-                ancho = 160
-                alto = 26
-                y_pos = 10
-                x_pos = (self.w - ancho) / 2
-            else:
-                ancho = 120
-                x_pos = (self.w - ancho) / 2
-            
-            if os.path.exists(logo_path):
-                logging.info(f"Insertando logo {logo_path} en posición: x={x_pos}, y={y_pos}")
+            logo_path = None
+            if self.empresa_info['logo_file']:
+                logo_path = os.path.join(BASE_DIR, 'img', self.empresa_info['logo_file'])
+                if not os.path.exists(logo_path):
+                    logo_path = None
+
+            if logo_path:
+                # Si hay logo, mostrarlo
+                y_pos, alto = 8, 20
+                
+                if self.tipo_empresa == 'COM':
+                    ancho = 208
+                    alto = 26
+                    y_pos = 8
+                    x_pos = (self.w - ancho) / 2
+                elif self.tipo_empresa == 'CUR':
+                    ancho = 130
+                    alto = 26
+                    y_pos = 8
+                    x_pos = 14
+                elif self.tipo_empresa == 'LBC':
+                    ancho = 160
+                    alto = 26
+                    y_pos = 10
+                    x_pos = (self.w - ancho) / 2
+                else:
+                    ancho = 120
+                    x_pos = (self.w - ancho) / 2
+                
                 self.image(logo_path, x=x_pos, y=y_pos, w=ancho, h=alto)
+                self.set_y(y_pos + alto + 2)
             else:
-                logging.warning(f"Logo no encontrado: {logo_path}")
-            
-            self.set_y(y_pos + alto + 2)
+                # Si no hay logo, mostrar información textual de la empresa
+                self.set_font('Arial', 'B', 14)
+                self.cell(0, 8, self.empresa_info['nombre_completo'], ln=True, align='C')
+                
+                # Mostrar NIT si está disponible
+                if self.empresa_info['nit'] != 'N/A':
+                    self.set_font('Arial', '', 10)
+                    self.cell(0, 6, f"NIT: {self.empresa_info['nit']}", ln=True, align='C')
+                
+                self.ln(5)
+                # Línea separadora
+                margen = 15
+                self.line(margen, self.get_y(), self.w - margen, self.get_y())
+                self.ln(8)  
+
         except Exception as e:
-            logging.error(f"Error en header del PDF: {str(e)}")
+            logging.error(f"Error en el encabezado del PDF: {str(e)}")
 
     def footer(self):
         if not self.mostrar_membrete:

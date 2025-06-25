@@ -126,13 +126,21 @@ def actualizar_estado_proceso(nuevo_estado='0'):
         logging.error(f"Error al actualizar estado en empresa.txt: {e}")
         return False
 
-def obtener_logo_por_empresa(tipo_empresa):
-    if tipo_empresa == 'CUR':
-        return LOGO_EMPRESA_CURTI
-    elif tipo_empresa == 'LBC':
-        return LOGO_EMPRESA_LBC
-    elif tipo_empresa == 'COM':
-        return LOGO_EMPRESA_COMER
-    else:
-        logging.warning(f"Tipo de empresa desconocido: {tipo_empresa}, usando logo CURTI por defecto")
-        return LOGO_EMPRESA_CURTI
+# Configuración de empresas centralizada
+EMPRESAS_CONFIG = {
+    'CUR': {
+        'nombre_completo': 'CURTIPIELES S.A.S.',
+        'logo_file': 'logo_curti.JPG',
+        'nit': '800.123.456-7'
+    },
+    'LBC': {
+        'nombre_completo': 'LUIS BERNARDO CALLE PAREJA',
+        'logo_file': 'logo_lbc.JPG', 
+        'nit': '900.123.456-8'
+    },
+    'COM': {
+        'nombre_completo': 'COMERCIALIZADORA CURTI S.A.S.',
+        'logo_file': 'logo_comer.JPG',
+        'nit': '700.123.456-9'
+    }
+}
