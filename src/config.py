@@ -80,8 +80,8 @@ def obtener_info_empresa():
     try:
         with open(ARCHIVO_EMPRESA, 'r', encoding='utf-8') as f:
             lineas = f.readlines()
-            
-        if len(lineas) < 8:
+
+        if len(lineas) < 9:
             logging.critical("El archivo empresa.txt no tiene suficientes líneas de configuración")
             return None
             
@@ -92,34 +92,35 @@ def obtener_info_empresa():
             'pie_pagina1': lineas[3].strip(), # Direccion
             'pie_pagina2': lineas[4].strip(), # Telefono
             'pie_pagina3': lineas[5].strip(), # Email
-            'estado_proceso': lineas[6].strip(),
-            'membrete': lineas[7].strip()
+            'inicio_proceso': lineas[6].strip(),
+            'estado_proceso': lineas[7].strip(),
+            'membrete': lineas[8].strip()
         }
     except Exception as e:
         logging.error(f"Error al leer archivo empresa.txt: {e}")
         return None
 
-def actualizar_estado_proceso(nuevo_estado='0'):
+def actualizar_estado_proceso(numero_linea, nuevo_estado='0'):
+    """Actializa el parametro INICIO (linea 6) o ESTADO (linea 7) del archivo empresa.txt"""
     try:
         info_empresa = obtener_info_empresa()
         if not info_empresa:
+            return False
+        
+        if not isinstance(numero_linea, int) or numero_linea < 0:
             return False
             
         with open(ARCHIVO_EMPRESA, 'r', encoding='utf-8') as f:
             lineas = f.readlines()
             
-        # Actualizar la línea 7 (índice 6)
-        if len(lineas) >= 7:
-            lineas[6] = f"{nuevo_estado}\n"
+        if len(lineas) >= 8:
+            lineas[numero_linea] = f"{nuevo_estado}\n"
+
+            with open(ARCHIVO_EMPRESA, 'w', encoding='utf-8') as f:
+                f.writelines(lineas)
         else:
-            # Si no hay suficientes líneas, agregar la que falta
-            while len(lineas) < 6:
-                lineas.append("\n")
-            lineas.append(f"{nuevo_estado}\n")
-            
-        # Escribir todas las líneas de vuelta al archivo
-        with open(ARCHIVO_EMPRESA, 'w', encoding='utf-8') as f:
-            f.writelines(lineas)
+            logging.error("El archivo empresa.txt no cumple con la estructura esperada.")
+            return False
             
         return True
     except Exception as e:
