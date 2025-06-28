@@ -189,7 +189,8 @@ class ProcesadorCorreos:
             
             if not archivos:
                 logging.info("No hay archivos para procesar")
-                cfg.actualizar_estado_proceso('0')
+                if not cfg.actualizar_estado_proceso(7, '0'):
+                    logging.critical("Error crítico: no se pudo marcar inicio del proceso")
                 return True
                 
             logging.info(f"Archivos encontrados: {len(archivos)}")
@@ -214,7 +215,8 @@ class ProcesadorCorreos:
                 logging.info(f"Archivos pendientes a procesar: {len(archivos)}")
                 
                 if not archivos:
-                    cfg.actualizar_estado_proceso('0')
+                    if not cfg.actualizar_estado_proceso(7, '0'):
+                        logging.critical("Error crítico: no se pudo marcar inicio del proceso")
                     return True
             
             # Procesar archivos con pausas programadas
@@ -234,7 +236,8 @@ class ProcesadorCorreos:
                     logging.info(f"Pausa aleatoria: {intervalo} segundos")
                     time.sleep(intervalo)
             
-            cfg.actualizar_estado_proceso('0')
+            if not cfg.actualizar_estado_proceso(7, '0'):
+                logging.critical("Error crítico: no se pudo marcar inicio del proceso")
             logging.info("Proceso completado")
             return True
             
@@ -272,6 +275,8 @@ def main():
             logging.critical(f"Estado del proceso inválido: '{estado_proceso}'. Debe ser '0' o '1'")
             sys.exit(1)
 
+        if not cfg.actualizar_estado_proceso(6, '0'):
+            logging.critical("Error crítico: no se pudo marcar inicio del proceso")
         # Ejecutar procesamiento
         procesador = ProcesadorCorreos(ruta_usuario, tamano_letra, estado_proceso)
         resultado = procesador.procesar_todos()
