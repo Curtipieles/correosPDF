@@ -190,7 +190,7 @@ class ProcesadorCorreos:
             if not archivos:
                 logging.info("No hay archivos para procesar")
                 if not cfg.actualizar_estado_proceso(7, '0'):
-                    logging.critical("Error crítico: no se pudo marcar inicio del proceso")
+                    logging.critical("Error crítico: no se pudo marcar el final del proceso")
                 return True
                 
             logging.info(f"Archivos encontrados: {len(archivos)}")
@@ -216,7 +216,7 @@ class ProcesadorCorreos:
                 
                 if not archivos:
                     if not cfg.actualizar_estado_proceso(7, '0'):
-                        logging.critical("Error crítico: no se pudo marcar inicio del proceso")
+                        logging.critical("Error crítico: no se pudo marcar el final del proceso")
                     return True
             
             # Procesar archivos con pausas programadas
@@ -237,7 +237,7 @@ class ProcesadorCorreos:
                     time.sleep(intervalo)
             
             if not cfg.actualizar_estado_proceso(7, '0'):
-                logging.critical("Error crítico: no se pudo marcar inicio del proceso")
+                logging.critical("Error crítico: no se pudo marcar el final del proceso")
             logging.info("Proceso completado")
             return True
             
