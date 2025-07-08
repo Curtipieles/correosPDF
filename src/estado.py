@@ -155,8 +155,14 @@ class EstadoCorreo:
             )
             
             # Guardar registro individual
-            with open(archivo_individual, 'w', encoding='utf-8') as file:
-                file.write(registro_detallado)
+            encoding_usado = 'utf-8'
+            try:
+                with open(archivo_individual, 'w', encoding='utf-8') as file:
+                    file.write(registro_detallado)
+            except UnicodeDecodeError:
+                encoding_usado = 'iso-8859-1'
+                with open(archivo_individual, 'w', encoding='iso-8859-1') as file:
+                    file.write(registro_detallado)
             
             # Actualizar registro general
             estado_correos_path = os.path.join(ESTADO_DIR, "estado_correos.txt")
@@ -169,7 +175,7 @@ class EstadoCorreo:
             # Leer registros existentes
             if os.path.exists(estado_correos_path):
                 try:
-                    with open(estado_correos_path, 'r', encoding='utf-8') as file:
+                    with open(estado_correos_path, 'r', encoding=encoding_usado) as file:
                         lineas = file.readlines()
                         if len(lineas) > 2:
                             registros_acumulados = lineas[2:]
@@ -179,7 +185,7 @@ class EstadoCorreo:
             registros_acumulados.insert(0, nuevo_registro)
             
             # Escribir registro actualizado
-            with open(estado_correos_path, 'w', encoding='utf-8') as file:
+            with open(estado_correos_path, 'w', encoding=encoding_usado) as file:
                 file.write(encabezado)
                 file.write(separador)
                 file.writelines(registros_acumulados)
@@ -193,7 +199,7 @@ class EstadoCorreo:
             try:
                 os.makedirs(ESTADO_DIR, exist_ok=True)
                 error_log_path = os.path.join(ESTADO_DIR, "errores_registro.log")
-                with open(error_log_path, 'a', encoding='utf-8') as error_file:
+                with open(error_log_path, 'a', encoding=encoding_usado) as error_file:
                     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     error_file.write(f"{timestamp} - Error al registrar '{codigo_archivo}': {e}\n")
             except Exception:

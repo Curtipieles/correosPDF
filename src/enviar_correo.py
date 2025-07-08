@@ -106,11 +106,17 @@ class EnviadorCorreo:
     @staticmethod
     def obtener_correo_por_codigo(codigo_archivo):
         try:
-            with open(ARCHIVO_DIRECCIONES, 'r') as file:
-                for linea in file:
-                    datos = linea.strip().split(',')
-                    if len(datos) >= 3 and datos[1] == codigo_archivo:
-                        return datos[2]
+            try:
+                with open(ARCHIVO_DIRECCIONES, 'r', encoding='utf-8') as file:
+                    lineas = file.readlines()
+            except UnicodeDecodeError:
+                with open(ARCHIVO_DIRECCIONES, 'r', encoding='iso-8859-1') as file:
+                    lineas = file.readlines()
+            
+            for linea in lineas:
+                datos = linea.strip().split(',')
+                if len(datos) >= 3 and datos[1] == codigo_archivo:
+                    return datos[2]
             logging.warning(f"Código {codigo_archivo} no encontrado en direcciones")
             return None
         except FileNotFoundError:
@@ -139,10 +145,14 @@ class EnviadorCorreo:
     
     def obtener_info_correo(self):
         try:
-            with open(ARCHIVO_INFO_CORREOS, 'r', encoding='utf-8') as file:
-                lineas = file.readlines()
-                asunto = lineas[0].strip()
-                cuerpo = ''.join(lineas[1:]).strip()
+            try:
+                with open(ARCHIVO_INFO_CORREOS, 'r', encoding='utf-8') as file:
+                    lineas = file.readlines()
+            except UnicodeDecodeError:
+                with open(ARCHIVO_INFO_CORREOS, 'r', encoding='iso-8859-1') as file:
+                    lineas = file.readlines()
+            asunto = lineas[0].strip()
+            cuerpo = ''.join(lineas[1:]).strip()
             if asunto and cuerpo:
                 return info_correo(asunto, cuerpo)
             logging.warning(f"Asunto o cuerpo vacío en archivo info_correo")

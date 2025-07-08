@@ -78,8 +78,12 @@ LOGO_EMPRESA_COMER = os.path.join(BASE_DIR, 'img', 'logo_comer.JPG')
 
 def obtener_info_empresa():
     try:
-        with open(ARCHIVO_EMPRESA, 'r', encoding='utf-8') as f:
-            lineas = f.readlines()
+        try:
+            with open(ARCHIVO_EMPRESA, 'r', encoding='utf-8') as f:
+                lineas = f.readlines()
+        except UnicodeDecodeError:
+            with open(ARCHIVO_EMPRESA, 'r', encoding='iso-8859-1') as f:
+                lineas = f.readlines()
 
         if len(lineas) < 9:
             logging.critical("El archivo empresa.txt no tiene suficientes líneas de configuración")
@@ -110,14 +114,22 @@ def actualizar_estado_proceso(numero_linea, nuevo_estado='0'):
         if not isinstance(numero_linea, int) or numero_linea < 0:
             return False
             
-        with open(ARCHIVO_EMPRESA, 'r', encoding='utf-8') as f:
-            lineas = f.readlines()
+        try:
+            with open(ARCHIVO_EMPRESA, 'r', encoding='utf-8') as f:
+                lineas = f.readlines()
+        except UnicodeDecodeError:
+            with open(ARCHIVO_EMPRESA, 'r', encoding='iso-8859-1') as f:
+                lineas = f.readlines()
             
         if len(lineas) >= 8:
             lineas[numero_linea] = f"{nuevo_estado}\n"
 
-            with open(ARCHIVO_EMPRESA, 'w', encoding='utf-8') as f:
-                f.writelines(lineas)
+            try:
+                with open(ARCHIVO_EMPRESA, 'w', encoding='utf-8') as f:
+                    f.writelines(lineas)
+            except UnicodeDecodeError:
+                with open(ARCHIVO_EMPRESA, 'w', encoding='iso-8859-1') as f:
+                    f.writelines(lineas)
         else:
             logging.error("El archivo empresa.txt no cumple con la estructura esperada.")
             return False

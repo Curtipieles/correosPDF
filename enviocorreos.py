@@ -43,12 +43,18 @@ class ProcesadorCorreos:
             if not os.path.exists(cfg.ARCHIVO_DIRECCIONES):
                 logging.critical(f"El archivo de direcciones no existe: {cfg.ARCHIVO_DIRECCIONES}")
                 return False
-                
-            with open(cfg.ARCHIVO_DIRECCIONES, 'r') as file:
-                lineas = file.readlines()
+            
+            encoding_usado = 'utf-8' # Identifica q encoding utilizar para el resto de la funcion 
+            try:
+                with open(cfg.ARCHIVO_DIRECCIONES, 'r', encoding='utf-8') as file:
+                    lineas = file.readlines()
+            except UnicodeDecodeError:
+                encoding_usado = 'iso-8859-1'
+                with open(cfg.ARCHIVO_DIRECCIONES, 'r', encoding='iso-8859-1') as file:
+                    lineas = file.readlines()
             
             actualizado = False
-            with open(cfg.ARCHIVO_DIRECCIONES, 'w') as file:
+            with open(cfg.ARCHIVO_DIRECCIONES, 'w', encoding=encoding_usado) as file:
                 for linea in lineas:
                     datos = linea.strip().split(',')
                     if len(datos) >= 3 and datos[1] == codigo_archivo:
@@ -72,19 +78,25 @@ class ProcesadorCorreos:
                 logging.critical("No existe el archivo de direcciones")
                 return []
                 
-            with open(cfg.ARCHIVO_DIRECCIONES, 'r', encoding='utf-8') as f:
-                for linea in f:
-                    linea = linea.strip()
-                    if not linea:
-                        continue
-                        
-                    partes = linea.split(',')
-                    if len(partes) >= 3:
-                        estado = partes[0].strip()
-                        codigo = partes[1].strip()
-                        
-                        if estado == "1":  # Pendiente
-                            archivos_pendientes.append(codigo)
+            try:
+                with open(cfg.ARCHIVO_DIRECCIONES, 'r', encoding='utf-8') as f:
+                    lineas = f.readlines()
+            except UnicodeDecodeError:
+                with open(cfg.ARCHIVO_DIRECCIONES, 'r', encoding='iso-8859-1') as f:
+                    lineas = f.readlines()
+
+            for linea in lineas:
+                linea = linea.strip()
+                if not linea:
+                    continue
+                    
+                partes = linea.split(',')
+                if len(partes) >= 3:
+                    estado = partes[0].strip()
+                    codigo = partes[1].strip()
+                    
+                    if estado == "1":  # Pendiente
+                        archivos_pendientes.append(codigo)
             
             logging.info(f"Archivos pendientes encontrados: {len(archivos_pendientes)}")
             return archivos_pendientes

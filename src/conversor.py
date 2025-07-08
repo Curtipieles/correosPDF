@@ -127,10 +127,9 @@ class ConversorPDF:
             try:
                 with open(ruta_archivo_txt, 'r', encoding='utf-8') as file:
                     lineas = file.readlines()
-            except UnicodeDecodeError as e:
-                error_msg = f"Error de codificación al leer archivo de texto: {str(e)}"
-                logging.error(error_msg)
-                return None, error_msg
+            except UnicodeDecodeError:
+                with open(ruta_archivo_txt, 'r', encoding='iso-8859-1') as file:
+                    lineas = file.readlines()
             except Exception as e:
                 error_msg = f"Error al leer archivo de texto: {str(e)}"
                 logging.error(error_msg)
