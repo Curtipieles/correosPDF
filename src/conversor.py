@@ -62,7 +62,7 @@ class ConversorPDF:
                 logging.error(error_msg)
                 return None, error_msg
             
-            font_size = 9 if tamano_letra == 'N' else 8
+            font_size = 9 if tamano_letra == 'N' else 7.5
             
             try:
                 pdf = PDF(info_empresa)
@@ -107,8 +107,8 @@ class ConversorPDF:
                     logging.error(error_msg)
                     return None, error_msg
             
-            margin_left = 14
-            margin_right = 195
+            margin_left = 6
+            margin_right = 202
             pdf.set_left_margin(margin_left)
             pdf.set_right_margin(pdf.w - margin_right)
             # Posición inicial automática según membrete
